@@ -120,7 +120,8 @@ tr.drag-over-bottom td{box-shadow:inset 0 -3px 0 0 #3b82f6}
 <!-- Tab 1: 班级管理 -->
 <div class="section active" id="sec-classes">
   <div class="card">
-    <h2>班级列表 <button class="btn btn-primary btn-sm" onclick="openClassModal()">＋ 新增班级</button></h2>
+    <h2>班级列表 <button class="btn btn-primary btn-sm" onclick="openClassModal()">＋ 新增班级</button>
+      <button class="btn btn-gray btn-sm" onclick="exportTab('classes')" style="margin-left:auto">📥 导出</button></h2>
     <div class="summary-bar" id="classSummary"></div>
     <div class="tbl"><table>
       <thead><tr>
@@ -150,6 +151,7 @@ tr.drag-over-bottom td{box-shadow:inset 0 -3px 0 0 #3b82f6}
         <button class="btn btn-primary btn-sm" onclick="saveStuAttendance()">保存登记</button>
       </span>
       <button class="btn btn-primary btn-sm" onclick="openStudentModal()" style="margin-left:auto">＋ 新增学员</button>
+      <button class="btn btn-gray btn-sm" onclick="exportTab('students')">📥 导出</button>
     </h2>
     <div class="tbl att-table-wrap"><table>
       <thead id="stuThead"><tr>
@@ -166,7 +168,8 @@ tr.drag-over-bottom td{box-shadow:inset 0 -3px 0 0 #3b82f6}
 <div class="section" id="sec-stats">
   <div class="card">
     <h2>班级排课进度 <button class="btn btn-success btn-sm" onclick="saveClassProgress()">保存修改</button>
-      <button class="btn btn-gray btn-sm" onclick="renderClassProgress()">重置</button></h2>
+      <button class="btn btn-gray btn-sm" onclick="renderClassProgress()">重置</button>
+      <button class="btn btn-gray btn-sm" onclick="exportTab('stats')" style="margin-left:auto">📥 导出</button></h2>
     <div class="tbl"><table><thead><tr>
       <th style="text-align:left">班级</th><th>年前已上</th><th>3月排课</th><th>4月排课</th><th>5月排课</th><th>6月排课</th>
       <th>累计已上</th><th>阶段总课时</th><th>进度</th><th>状态</th>
@@ -781,6 +784,136 @@ async function saveClassProgress() {
   await loadAll();
   renderClassProgress();
   showToast('已保存 ' + count + ' 项排课数据');
+}
+
+// ═══════════════════════════════════════
+// 导出功能
+// ═══════════════════════════════════════
+function csvEscape(val) {
+  const s = String(val == null ? '' : val);
+  if (s.includes(',') || s.includes('"') || s.includes('\n') || s.includes('\r')) {
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+  return s;
+}
+
+function exportCSV(headers, rows, filename) {
+  const BOM = '\uFEFF';
+  let csv = BOM + headers.map(csvEscape).join(',') + '\n';
+  rows.forEach(row => {
+    csv += row.map(csvEscape).join(',') + '\n';
+  });
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('已导出: ' + filename);
+}
+
+function exportTab(tab) {
+  if (tab === 'classes') exportClasses();
+  if (tab === 'students') exportStudents();
+  if (tab === 'stats') exportStats();
+}
+
+function exportClasses() {
+  const headers = ['班级名称', '阶段', '排课频率（节/月）', '阶段总课时', '年前已上', '学员数'];
+  const countMap = {};
+  _students.filter(s => s.status !== '毕业').forEach(s => { countMap[s.class_id] = (countMap[s.class_id]||0) + 1; });
+  const rows = _classes.map(c => [
+    c.name,
+    c.phase || '',
+    (c.freq || 0) + '',
+    (c.total_hours || 0) + '',
+    (c.before_hours || 0) + '',
+    (countMap[c.id] || 0) + ''
+  ]);
+  exportCSV(headers, rows, '班级管理_教务系统.csv');
+}
+
+function exportStudents() {
+  const filterId = document.getElementById('stuClassFilter').value;
+  const year = parseInt(document.getElementById('stuYearFilter')?.value || '2026');
+  const isDetailMode = filterId !== 'all';
+  const classMap = {};
+  _classes.forEach(c => { classMap[c.id] = c.name; });
+
+  if (!isDetailMode) {
+    // 全部班级：简洁视图
+    const headers = ['姓名', '班级', '合计已消耗', '缴费课时', '剩余课时'];
+    const rows = [];
+    _students.filter(s => document.getElementById('showGraduated').checked || s.status !== '毕业').forEach(s => {
+      const rem = calcRemaining(s.id);
+      rows.push([
+        s.name,
+        classMap[s.class_id] || '无班级',
+        ((s.paid_hours||0) - rem).toFixed(1),
+        (s.paid_hours||0) + '',
+        rem + ''
+      ]);
+    });
+    exportCSV(headers, rows, '学员出勤_全部班级.csv');
+  } else {
+    // 具体班级：月度展开视图
+    const cid = parseInt(filterId);
+    const cname = classMap[cid] || '未知班级';
+    const headers = ['姓名', '1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月', '年合计', '累计已消耗', '缴费课时', '剩余课时'];
+    const rows = [];
+    _students.filter(s => s.class_id === cid && (document.getElementById('showGraduated').checked || s.status !== '毕业'))
+      .sort((a,b) => (a.sort_order||0) - (b.sort_order||0))
+      .forEach(s => {
+        const rem = calcRemaining(s.id);
+        const consumed = (s.paid_hours||0) - rem;
+        const row = [s.name];
+        let yearTotal = 0;
+        for (let m = 1; m <= 12; m++) {
+          const rec = _attendance.find(a => a.student_id === s.id && a.year === year && a.month === m);
+          const hours = rec ? (rec.hours||0) : 0;
+          yearTotal += hours;
+          row.push(hours + '');
+        }
+        row.push(yearTotal.toFixed(1), consumed.toFixed(1), (s.paid_hours||0) + '', rem + '');
+        rows.push(row);
+      });
+    exportCSV(headers, rows, '学员出勤_' + cname + '_' + year + '年.csv');
+  }
+}
+
+function exportStats() {
+  const months = [3,4,5,6];
+  const mkeys = ['m3','m4','m5','m6'];
+  const headers = ['班级', '年前已上', '3月排课', '4月排课', '5月排课', '6月排课', '累计已上', '阶段总课时', '进度(%)', '状态'];
+
+  const rows = _classes.map(c => {
+    const totalHours = c.total_hours || 0;
+    const before = c.before_hours || 0;
+    const monthlySum = months.reduce((s, m, i) => s + (c[mkeys[i]] || 0), 0);
+    const cumulative = monthlySum;
+    const pct = totalHours > 0 ? Math.round(cumulative / totalHours * 100) : 0;
+
+    let statusText = '';
+    if (totalHours === 0) { statusText = '未设置'; }
+    else if (cumulative === 0) { statusText = '未开课'; }
+    else if (pct >= 100) { statusText = '已完成'; }
+    else if (pct >= 75) { statusText = '接近完成'; }
+    else if (pct >= 50) { statusText = '过半'; }
+    else if (pct >= 25) { statusText = '进行中'; }
+    else { statusText = '刚起步'; }
+
+    return [
+      c.name,
+      before + '',
+      (c.m3||0) + '', (c.m4||0) + '', (c.m5||0) + '', (c.m6||0) + '',
+      cumulative + '',
+      totalHours + '',
+      pct + '%',
+      statusText
+    ];
+  });
+  exportCSV(headers, rows, '班级排课进度_教务系统.csv');
 }
 
 // ═══════════════════════════════════════
