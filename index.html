@@ -651,15 +651,25 @@ function renderClassProgress() {
     const before = c.before_hours || 0;
     const monthlySum = months.reduce((s, m, i) => s + (c[mkeys[i]] || 0), 0);
     const cumulative = monthlySum;  // "累计已上" = 仅当年排课（不含年前已上）
-    const totalDone = before + monthlySum;  // 总完成 = 年前 + 当年，用于进度百分比
-    const pct = totalHours > 0 ? Math.round(totalDone / totalHours * 100) : 0;
+    // 进度 = 累计已上 / 阶段总课时（本年度完成进度）
+    const pct = totalHours > 0 ? Math.round(cumulative / totalHours * 100) : 0;
     
+    // 状态分级
+    // 未开课: 阶段总课时>0 且 累计已上=0 （当年从未排课/未开班）
+    // 刚起步: 0% < 进度 < 25%
+    // 进行中: 25% ≤ 进度 < 50%
+    // 过半:   50% ≤ 进度 < 75%
+    // 接近完成: 75% ≤ 进度 < 100%
+    // 已完成: 进度 ≥ 100%
+    // 未设置: 阶段总课时 = 0
     let barColor = '#94a3b8', statusText = '';
     if (totalHours === 0) { statusText = '未设置'; }
+    else if (cumulative === 0) { barColor = '#94a3b8'; statusText = '未开课'; }
     else if (pct >= 100) { barColor = '#10b981'; statusText = '已完成'; }
-    else if (pct >= 75) { barColor = '#3b82f6'; statusText = '接近完成'; }
-    else if (pct >= 50) { barColor = '#f59e0b'; statusText = '进行中'; }
-    else { barColor = '#ef4444'; statusText = '刚起步'; }
+    else if (pct >= 75) { barColor = '#8b5cf6'; statusText = '接近完成'; }
+    else if (pct >= 50) { barColor = '#3b82f6'; statusText = '过半'; }
+    else if (pct >= 25) { barColor = '#f59e0b'; statusText = '进行中'; }
+    else { barColor = '#f97316'; statusText = '刚起步'; }
     
     html += '<tr>' +
       '<td style="text-align:left;font-weight:600">' + c.name + '</td>' +
