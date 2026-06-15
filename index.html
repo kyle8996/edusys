@@ -61,9 +61,32 @@ tr.drag-over-bottom td{box-shadow:inset 0 -3px 0 0 #3b82f6}
 .status-toggle input{margin:0}
 .sync-bar{background:linear-gradient(135deg,#10b981,#059669);color:#fff;padding:8px 28px;display:flex;align-items:center;gap:10px;font-size:12px;flex-wrap:wrap}
 .sync-bar b{font-size:13px}
+.login-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:#1e3a5f;z-index:999;display:flex;justify-content:center;align-items:center;flex-direction:column}
+.login-box{background:#fff;border-radius:20px;padding:40px 36px;width:90%;max-width:380px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.login-box h2{font-size:22px;color:#1e3a5f;margin-bottom:6px}
+.login-box .sub{font-size:13px;color:#94a3b8;margin-bottom:24px}
+.login-box input{width:100%;padding:12px 16px;border:2px solid #e2e8f0;border-radius:12px;font-size:16px;text-align:center;outline:none;transition:.2s}
+.login-box input:focus{border-color:#2563eb}
+.login-box .err-msg{color:#ef4444;font-size:12px;margin-top:8px;display:none}
+.login-box .btn-login{width:100%;padding:12px;background:#2563eb;color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;margin-top:14px;transition:.2s}
+.login-box .btn-login:hover{background:#1d4ed8}
 </style>
 </head>
 <body>
+
+<!-- 登录遮罩 -->
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-box">
+    <h2>🔐 DK·邻里 教务系统</h2>
+    <div class="sub">请输入密码以访问系统</div>
+    <input type="password" id="loginPwd" placeholder="输入密码" onkeydown="if(event.key==='Enter')doLogin()" autofocus>
+    <div class="err-msg" id="loginErr">密码错误，请重试</div>
+    <button class="btn-login" onclick="doLogin()">登 录</button>
+  </div>
+</div>
+
+<!-- 主内容（登录后显示） -->
+<div id="app" style="display:none">
 
 <div class="toast" id="toast"></div>
 
@@ -668,8 +691,29 @@ function initApp() {
   renderClassProgress();
 }
 
-// 启动
-loadAll();
+// 登录
+const LOGIN_PWD = 'DK0308';
+
+function doLogin() {
+  const input = document.getElementById('loginPwd').value;
+  if (input === LOGIN_PWD) {
+    sessionStorage.setItem('edusys_logged_in', '1');
+    document.getElementById('loginOverlay').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    loadAll();
+  } else {
+    document.getElementById('loginErr').style.display = 'block';
+    document.getElementById('loginPwd').value = '';
+    document.getElementById('loginPwd').focus();
+  }
+}
+
+// 自动检测是否已登录（当前浏览器标签页有效）
+if (sessionStorage.getItem('edusys_logged_in') === '1') {
+  document.getElementById('loginOverlay').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  loadAll();
+}
 </script>
 </body>
 </html>
