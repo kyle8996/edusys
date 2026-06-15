@@ -279,8 +279,9 @@ function switchTab(tab) {
 // Tab 1: 班级管理
 // ═══════════════════════════════════════
 function renderClasses() {
+  // 修复: 只统计在读学员，排除已毕业
   const countMap = {};
-  _students.forEach(s => { countMap[s.class_id] = (countMap[s.class_id]||0) + 1; });
+  _students.filter(s => s.status !== '毕业').forEach(s => { countMap[s.class_id] = (countMap[s.class_id]||0) + 1; });
   let html = '';
   _classes.forEach(c => {
     const phase = c.phase || '';
@@ -649,8 +650,9 @@ function renderClassProgress() {
     const totalHours = c.total_hours || 0;
     const before = c.before_hours || 0;
     const monthlySum = months.reduce((s, m, i) => s + (c[mkeys[i]] || 0), 0);
-    const cumulative = before + monthlySum;
-    const pct = totalHours > 0 ? Math.round(cumulative / totalHours * 100) : 0;
+    const cumulative = monthlySum;  // "累计已上" = 仅当年排课（不含年前已上）
+    const totalDone = before + monthlySum;  // 总完成 = 年前 + 当年，用于进度百分比
+    const pct = totalHours > 0 ? Math.round(totalDone / totalHours * 100) : 0;
     
     let barColor = '#94a3b8', statusText = '';
     if (totalHours === 0) { statusText = '未设置'; }
