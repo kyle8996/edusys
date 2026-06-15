@@ -70,6 +70,12 @@ tr.drag-over-bottom td{box-shadow:inset 0 -3px 0 0 #3b82f6}
 .login-box .err-msg{color:#ef4444;font-size:12px;margin-top:8px;display:none}
 .login-box .btn-login{width:100%;padding:12px;background:#2563eb;color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;margin-top:14px;transition:.2s}
 .login-box .btn-login:hover{background:#1d4ed8}
+.summary-bar{display:flex;gap:14px;margin-bottom:16px;flex-wrap:wrap}
+.summary-item{flex:1;min-width:130px;background:#f8fafc;border-radius:10px;padding:14px 18px;text-align:center;border:1px solid #e2e8f0}
+.summary-item .num{font-size:28px;font-weight:800;line-height:1.2}
+.summary-item .lbl{font-size:11px;color:#64748b;margin-top:2px}
+.summary-item .sub{font-size:11px;color:#94a3b8;margin-top:1px}
+.sc-active .num{color:#2563eb}.sc-opened .num{color:#10b981}.sc-notopened .num{color:#94a3b8}.sc-grad .num{color:#8b5cf6}
 </style>
 </head>
 <body>
@@ -111,6 +117,7 @@ tr.drag-over-bottom td{box-shadow:inset 0 -3px 0 0 #3b82f6}
 <div class="section active" id="sec-classes">
   <div class="card">
     <h2>班级列表 <button class="btn btn-primary btn-sm" onclick="openClassModal()">＋ 新增班级</button></h2>
+    <div class="summary-bar" id="classSummary"></div>
     <div class="tbl"><table>
       <thead><tr>
         <th style="text-align:left;width:140px">班级名称</th><th style="width:60px">阶段</th>
@@ -282,6 +289,23 @@ function renderClasses() {
   // 修复: 只统计在读学员，排除已毕业
   const countMap = {};
   _students.filter(s => s.status !== '毕业').forEach(s => { countMap[s.class_id] = (countMap[s.class_id]||0) + 1; });
+
+  // ── 统计汇总 ──
+  const activeStu = _students.filter(s => s.status !== '毕业');
+  const gradStu = _students.filter(s => s.status === '毕业');
+  // 已开课 = 在读 + 班级累计排课 > 0
+  const openedCount = activeStu.filter(s => {
+    const cls = _classes.find(c => c.id === s.class_id);
+    if (!cls) return false;
+    return ((cls.m3||0) + (cls.m4||0) + (cls.m5||0) + (cls.m6||0)) > 0;
+  }).length;
+  const notOpenedCount = activeStu.length - openedCount;
+  document.getElementById('classSummary').innerHTML =
+    '<div class="summary-item sc-active"><div class="num">' + activeStu.length + '</div><div class="lbl">在读学员</div></div>' +
+    '<div class="summary-item sc-opened"><div class="num">' + openedCount + '</div><div class="lbl">已开课</div><div class="sub">累计排课 &gt; 0</div></div>' +
+    '<div class="summary-item sc-notopened"><div class="num">' + notOpenedCount + '</div><div class="lbl">未开课</div><div class="sub">累计排课 = 0</div></div>' +
+    '<div class="summary-item sc-grad"><div class="num">' + gradStu.length + '</div><div class="lbl">已毕业</div></div>';
+
   let html = '';
   _classes.forEach(c => {
     const phase = c.phase || '';
