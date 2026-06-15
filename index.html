@@ -44,6 +44,9 @@ tbody tr:hover{background:#f8fafc}
 .att-table-wrap .att-total{font-weight:700;color:#2563eb;background:#f0f7ff}
 .att-month-hd{background:#f1f5f9;font-size:11px;color:#64748b}
 .att-table-wrap td input.changed{background:#fef3c7;border-color:#f59e0b}
+.stu-att-input{width:42px;padding:3px 2px;border:1px solid #cbd5e1;border-radius:5px;text-align:center;font-size:11px}
+.stu-att-input:focus{outline:none;border-color:#2563eb;background:#f0f7ff}
+.stu-att-input.changed{background:#fef3c7;border-color:#f59e0b}
 .pbar{height:6px;background:#e2e8f0;border-radius:3px;overflow:hidden;width:60px;display:inline-block;vertical-align:middle;margin-top:3px}
 .pfill{height:100%;border-radius:3px}
 .toast{position:fixed;top:20px;right:20px;padding:12px 20px;border-radius:10px;color:#fff;font-size:14px;font-weight:600;z-index:300;opacity:0;transform:translateX(20px);transition:.3s;max-width:400px}
@@ -110,7 +113,6 @@ tr.drag-over-bottom td{box-shadow:inset 0 -3px 0 0 #3b82f6}
   <div class="tabs">
     <button class="active" onclick="switchTab('classes')">班级管理</button>
     <button onclick="switchTab('students')">学员出勤</button>
-    <button onclick="switchTab('attendance')">课时登记</button>
     <button onclick="switchTab('stats')">班级排课</button>
   </div>
 </div>
@@ -132,7 +134,7 @@ tr.drag-over-bottom td{box-shadow:inset 0 -3px 0 0 #3b82f6}
   </div>
 </div>
 
-<!-- Tab 2: 学员出勤 -->
+<!-- Tab 2: 学员出勤（融合课时登记） -->
 <div class="section" id="sec-students">
   <div class="card">
     <h2>学员列表
@@ -142,9 +144,14 @@ tr.drag-over-bottom td{box-shadow:inset 0 -3px 0 0 #3b82f6}
       <label class="status-toggle" style="margin-left:12px;font-size:13px">
         <input type="checkbox" id="showGraduated" onchange="renderStudents()"> 显示毕业学员
       </label>
+      <span id="stuAttControls" style="display:none;margin-left:8px;gap:6px;align-items:center">
+        <label style="font-size:12px;margin-left:4px">年：<input type="number" id="stuYearFilter" value="2026" min="2020" max="2030" style="width:60px;padding:4px 8px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px" onchange="renderStudents()"></label>
+        <button class="btn btn-success btn-sm" onclick="markStuAllPresent()">一键全勤</button>
+        <button class="btn btn-primary btn-sm" onclick="saveStuAttendance()">保存登记</button>
+      </span>
       <button class="btn btn-primary btn-sm" onclick="openStudentModal()" style="margin-left:auto">＋ 新增学员</button>
     </h2>
-    <div class="tbl"><table>
+    <div class="tbl att-table-wrap"><table>
       <thead id="stuThead"><tr>
         <th style="width:50px">拖拽</th><th style="text-align:left;width:100px">姓名</th><th style="width:120px">班级</th>
         <th style="width:80px">合计</th><th style="width:90px">缴费课时</th><th style="width:90px">剩余课时</th>
@@ -152,27 +159,6 @@ tr.drag-over-bottom td{box-shadow:inset 0 -3px 0 0 #3b82f6}
       </tr></thead>
       <tbody id="stuTbody"></tbody>
     </table></div>
-  </div>
-</div>
-
-<!-- Tab 3: 课时登记 -->
-<div class="section" id="sec-attendance">
-  <div class="card">
-    <h2>课时登记</h2>
-    <div class="att-form">
-      <label>班级：<select id="attClass" onchange="renderAttendance()"><option value="">请选择班级</option></select></label>
-      <label>年：<input type="number" id="attYear" value="2026" min="2020" max="2030" style="width:70px" onchange="renderAttendance()"></label>
-      <button class="btn btn-success" onclick="markAllPresent()">一键全勤</button>
-      <button class="btn btn-primary" onclick="saveAttendance()">保存登记</button>
-      <span style="font-size:12px;color:#94a3b8;margin-left:8px" id="attInfo"></span>
-    </div>
-    <div class="att-table-wrap"><table><thead><tr>
-      <th style="text-align:left;width:90px">学员姓名</th>
-      <th class="att-month-hd">1月</th><th class="att-month-hd">2月</th><th class="att-month-hd">3月</th><th class="att-month-hd">4月</th>
-      <th class="att-month-hd">5月</th><th class="att-month-hd">6月</th><th class="att-month-hd">7月</th><th class="att-month-hd">8月</th>
-      <th class="att-month-hd">9月</th><th class="att-month-hd">10月</th><th class="att-month-hd">11月</th><th class="att-month-hd">12月</th>
-      <th style="width:55px;font-weight:700;color:#2563eb">合计</th>
-    </tr></thead><tbody id="attTbody"></tbody></table></div>
   </div>
 </div>
 
@@ -274,13 +260,12 @@ function getClassName(cid) {
 function switchTab(tab) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
-  const map = {classes:'sec-classes',students:'sec-students',attendance:'sec-attendance',stats:'sec-stats'};
-  const idx = {classes:0,students:1,attendance:2,stats:3};
+  const map = {classes:'sec-classes',students:'sec-students',stats:'sec-stats'};
+  const idx = {classes:0,students:1,stats:2};
   document.getElementById(map[tab]).classList.add('active');
   document.querySelectorAll('.tabs button')[idx[tab]].classList.add('active');
   if (tab==='classes') renderClasses();
   if (tab==='students') { fillStuClassFilter(); renderStudents(); }
-  if (tab==='attendance') { fillAttClass(); renderAttendance(); }
   if (tab==='stats') renderClassProgress();
 }
 
@@ -409,38 +394,108 @@ function fillStuClassFilter() {
 async function renderStudents() {
   const filterId = document.getElementById('stuClassFilter').value;
   const showGrad = document.getElementById('showGraduated').checked;
+  const year = parseInt(document.getElementById('stuYearFilter')?.value || '2026');
+  const isDetailMode = filterId !== 'all';
   const classMap = {};
   _classes.forEach(c => { classMap[c.id] = c.name; });
   
-  // Filter students
+  // 控制年度选择器和出勤按钮的显示
+  const attControls = document.getElementById('stuAttControls');
+  if (attControls) attControls.style.display = isDetailMode ? 'inline-flex' : 'none';
+  
+  // 筛选学员
   let list = _students.filter(s => showGrad || s.status !== '毕业');
-  if (filterId !== 'all') list = list.filter(s => s.class_id === parseInt(filterId));
+  if (isDetailMode) list = list.filter(s => s.class_id === parseInt(filterId));
   
-  // Group by class
-  const groups = {};
-  list.forEach(s => {
-    const cid = s.class_id || 0;
-    if (!groups[cid]) groups[cid] = [];
-    groups[cid].push(s);
-  });
-  
-  let html = '';
-  const orderedCids = Object.keys(groups).sort((a,b) => {
-    const ca = _classes.find(x => x.id === parseInt(a));
-    const cb = _classes.find(x => x.id === parseInt(b));
-    return (ca?.id||0) - (cb?.id||0);
-  });
-  
-  orderedCids.forEach(cid => {
-    const cname = classMap[parseInt(cid)] || '无班级';
-    html += '<tr class="cls-header"><td colspan="7" style="text-align:left;padding:10px 8px"><b>' + cname + '</b></td></tr>';
-    groups[cid].sort((a,b) => (a.sort_order||0) - (b.sort_order||0)).forEach((s, idx) => {
+  if (!isDetailMode) {
+    // ═══════════ 全部班级：简洁汇总视图 ═══════════
+    const groups = {};
+    list.forEach(s => {
+      const cid = s.class_id || 0;
+      if (!groups[cid]) groups[cid] = [];
+      groups[cid].push(s);
+    });
+    
+    let html = '';
+    const orderedCids = Object.keys(groups).sort((a,b) => {
+      const ca = _classes.find(x => x.id === parseInt(a));
+      const cb = _classes.find(x => x.id === parseInt(b));
+      return (ca?.id||0) - (cb?.id||0);
+    });
+    
+    document.getElementById('stuThead').innerHTML = '<tr>' +
+      '<th style="width:50px">拖拽</th><th style="text-align:left;width:100px">姓名</th><th style="width:120px">班级</th>' +
+      '<th style="width:80px">合计</th><th style="width:90px">缴费课时</th><th style="width:90px">剩余课时</th>' +
+      '<th style="width:130px">操作</th></tr>';
+    
+    orderedCids.forEach(cid => {
+      const cname = classMap[parseInt(cid)] || '无班级';
+      html += '<tr class="cls-header"><td colspan="7" style="text-align:left;padding:10px 8px"><b>' + cname + '</b></td></tr>';
+      groups[cid].sort((a,b) => (a.sort_order||0) - (b.sort_order||0)).forEach(s => {
+        const rem = calcRemaining(s.id);
+        const consumed = (s.paid_hours||0) - rem;
+        const isGrad = s.status === '毕业';
+        const isWarn = !isGrad && rem < 15 && rem > 0;
+        const rowClass = isGrad ? 'row-grad' : (isWarn ? 'row-warn' : '');
+        html += '<tr class="' + rowClass + '" draggable="true" ' +
+          'ondragstart="dragStart(event,' + s.id + ')" ' +
+          'ondragover="dragOver(event,' + s.id + ',this)" ' +
+          'ondragleave="dragLeave(event,this)" ' +
+          'ondrop="dropStudent(event,' + s.id + ')" ' +
+          'data-sid="' + s.id + '">' +
+          '<td><span class="drag-hint">⋮⋮</span></td>' +
+          '<td style="text-align:left;font-weight:600">' + s.name +
+            (isGrad ? '<span class="grad-tag">毕业</span>' : '') +
+            (isWarn ? '<span class="badge-warn">续费</span>' : '') + '</td>' +
+          '<td>' + cname + '</td>' +
+          '<td>' + consumed.toFixed(1) + '</td>' +
+          '<td>' + (s.paid_hours||0) + '</td>' +
+          '<td><b style="color:' + (rem < 15 ? '#f97316' : '#2563eb') + '">' + rem + '</b></td>' +
+          '<td>' +
+            '<label class="status-toggle" onclick="toggleStatus(' + s.id + ')" title="切换在读/毕业">' +
+            '<input type="checkbox" ' + (isGrad ? '' : 'checked') + '>' +
+            '<span>' + (isGrad ? '已毕业' : '在读') + '</span>' +
+            '</label> ' +
+            '<button class="btn btn-gray btn-xs" onclick="editStudent(' + s.id + ')">✏️</button> ' +
+            '<button class="btn btn-danger btn-xs" onclick="deleteStudent(' + s.id + ')">🗑</button>' +
+          '</td></tr>';
+      });
+    });
+    document.getElementById('stuTbody').innerHTML = html || '<tr><td colspan="7" style="color:#94a3b8;padding:30px">暂无学员</td></tr>';
+  } else {
+    // ═══════════ 具体班级：展开月度课时视图 ═══════════
+    const cid = parseInt(filterId);
+    const cls = _classes.find(c => c.id === cid);
+    const freq = cls?.freq || 8;
+    const cname = classMap[cid] || '未知班级';
+    const totalCols = 18;
+    
+    // 表头：拖拽 | 姓名 | 1~12月 | 年合计 | 累计已消 | 缴费 | 剩余 | 操作
+    let theadHtml = '<tr>' +
+      '<th style="width:28px">⋮</th>' +
+      '<th style="text-align:left;width:70px">姓名</th>';
+    for (let m = 1; m <= 12; m++) {
+      const isTeaching = m >= 3 && m <= 6;
+      theadHtml += '<th class="att-month-hd"' + (isTeaching ? ' style="background:#e0f0ff;color:#2563eb"' : '') + '>' + m + '月</th>';
+    }
+    theadHtml += '<th style="width:44px;color:#2563eb;font-weight:700">合计</th>' +
+      '<th style="width:52px">累计已消</th>' +
+      '<th style="width:48px">缴费</th>' +
+      '<th style="width:48px">剩余</th>' +
+      '<th style="width:75px">操作</th></tr>';
+    document.getElementById('stuThead').innerHTML = theadHtml;
+    
+    // 表体
+    let html = '<tr class="cls-header"><td colspan="' + totalCols + '" style="text-align:left;padding:10px 8px"><b>' + cname + '</b> · ' + list.length + ' 名学员 · 排课 ' + freq + ' 节/月</td></tr>';
+    
+    list.sort((a,b) => (a.sort_order||0) - (b.sort_order||0)).forEach(s => {
       const rem = calcRemaining(s.id);
       const consumed = (s.paid_hours||0) - rem;
       const isGrad = s.status === '毕业';
       const isWarn = !isGrad && rem < 15 && rem > 0;
       const rowClass = isGrad ? 'row-grad' : (isWarn ? 'row-warn' : '');
-      html += '<tr class="' + rowClass + '" draggable="true" ' +
+      
+      html += '<tr class="' + rowClass + '" data-sid="' + s.id + '" draggable="true" ' +
         'ondragstart="dragStart(event,' + s.id + ')" ' +
         'ondragover="dragOver(event,' + s.id + ',this)" ' +
         'ondragleave="dragLeave(event,this)" ' +
@@ -449,23 +504,34 @@ async function renderStudents() {
         '<td><span class="drag-hint">⋮⋮</span></td>' +
         '<td style="text-align:left;font-weight:600">' + s.name +
           (isGrad ? '<span class="grad-tag">毕业</span>' : '') +
-          (isWarn ? '<span class="badge-warn">续费</span>' : '') + '</td>' +
-        '<td>' + cname + '</td>' +
+          (isWarn ? '<span class="badge-warn">续费</span>' : '') + '</td>';
+      
+      let rowYearTotal = 0;
+      for (let m = 1; m <= 12; m++) {
+        const rec = _attendance.find(a => a.student_id === s.id && a.year === year && a.month === m);
+        const hours = rec ? (rec.hours || 0) : 0;
+        rowYearTotal += hours;
+        const isTeaching = m >= 3 && m <= 6;
+        html += '<td><input type="number" step="0.5" min="0" value="' + hours + 
+          '" data-sid="' + s.id + '" data-month="' + m + '" class="stu-att-input"' +
+          (isTeaching ? '' : ' style="color:#94a3b8"') + 
+          ' oninput="updateStuRowTotals()"></td>';
+      }
+      html += '<td class="att-total">' + rowYearTotal.toFixed(1) + '</td>' +
         '<td>' + consumed.toFixed(1) + '</td>' +
         '<td>' + (s.paid_hours||0) + '</td>' +
         '<td><b style="color:' + (rem < 15 ? '#f97316' : '#2563eb') + '">' + rem + '</b></td>' +
         '<td>' +
           '<label class="status-toggle" onclick="toggleStatus(' + s.id + ')" title="切换在读/毕业">' +
           '<input type="checkbox" ' + (isGrad ? '' : 'checked') + '>' +
-          '<span>' + (isGrad ? '已毕业' : '在读') + '</span>' +
+          '<span style="font-size:10px">' + (isGrad ? '毕业' : '在读') + '</span>' +
           '</label> ' +
           '<button class="btn btn-gray btn-xs" onclick="editStudent(' + s.id + ')">✏️</button> ' +
           '<button class="btn btn-danger btn-xs" onclick="deleteStudent(' + s.id + ')">🗑</button>' +
         '</td></tr>';
     });
-  });
-  
-  document.getElementById('stuTbody').innerHTML = html || '<tr><td colspan="7" style="color:#94a3b8;padding:30px">暂无学员</td></tr>';
+    document.getElementById('stuTbody').innerHTML = html || '<tr><td colspan="' + totalCols + '" style="color:#94a3b8;padding:30px">该班级暂无学员</td></tr>';
+  }
 }
 
 async function toggleStatus(sid) {
@@ -602,48 +668,12 @@ async function dropStudent(event, targetSid) {
 }
 
 // ═══════════════════════════════════════
-// Tab 3: 课时登记
+// 学员出勤 · 月度课时登记（融合功能）
 // ═══════════════════════════════════════
-function fillAttClass() {
-  const sel = document.getElementById('attClass');
-  sel.innerHTML = '<option value="">请选择班级</option>';
-  _classes.forEach(c => { sel.innerHTML += '<option value="' + c.id + '">' + c.name + '</option>'; });
-}
-
-async function renderAttendance() {
-  const cid = parseInt(document.getElementById('attClass').value);
-  const year = parseInt(document.getElementById('attYear').value);
-  if (!cid) { document.getElementById('attTbody').innerHTML = ''; document.getElementById('attInfo').textContent = ''; return; }
-
-  const classStudents = _students.filter(s => s.class_id === cid && s.status !== '毕业');
-  const freq = _classes.find(c => c.id === cid)?.freq || 8;
-  document.getElementById('attInfo').textContent = classStudents.length + ' 名学员 · 排课' + freq + '节/月';
-
-  let html = '';
-  classStudents.forEach(s => {
-    html += '<tr><td style="text-align:left;font-weight:500">' + s.name + '</td>';
-    let rowTotal = 0;
-    for (let m = 1; m <= 12; m++) {
-      const rec = _attendance.find(a => a.student_id === s.id && a.year === year && a.month === m);
-      const hours = rec ? (rec.hours || 0) : 0;
-      rowTotal += hours;
-      // 高亮当前教学月份(3-6月)
-      const isTeachingMonth = m >= 3 && m <= 6;
-      html += '<td><input type="number" step="0.5" min="0" value="' + hours + '" data-sid="' + s.id + '" data-month="' + m + '" class="att-input"' + (isTeachingMonth ? '' : ' style="color:#94a3b8"') + '></td>';
-    }
-    html += '<td class="att-total">' + rowTotal.toFixed(1) + '</td></tr>';
-  });
-  document.getElementById('attTbody').innerHTML = html || '<tr><td colspan="14" style="color:#94a3b8;padding:20px">该班级暂无在读学员</td></tr>';
-
-  // 监听输入变化，实时更新合计
-  document.querySelectorAll('.att-input').forEach(inp => {
-    inp.addEventListener('input', updateRowTotals);
-  });
-}
-
-function updateRowTotals() {
-  document.querySelectorAll('#attTbody tr').forEach(tr => {
-    const inputs = tr.querySelectorAll('.att-input');
+function updateStuRowTotals() {
+  document.querySelectorAll('#stuTbody tr').forEach(tr => {
+    const inputs = tr.querySelectorAll('.stu-att-input');
+    if (inputs.length === 0) return;
     const totalCell = tr.querySelector('.att-total');
     if (!totalCell) return;
     let sum = 0;
@@ -652,24 +682,25 @@ function updateRowTotals() {
   });
 }
 
-function markAllPresent() {
-  const cid = parseInt(document.getElementById('attClass').value);
-  if (!cid) return;
+function markStuAllPresent() {
+  const filterId = document.getElementById('stuClassFilter').value;
+  if (filterId === 'all') return;
+  const cid = parseInt(filterId);
   const freq = _classes.find(c => c.id === cid)?.freq || 8;
-  // 只填教学月份(3-6月)为全勤
-  document.querySelectorAll('.att-input').forEach(inp => {
+  document.querySelectorAll('.stu-att-input').forEach(inp => {
     const m = parseInt(inp.dataset.month);
     if (m >= 3 && m <= 6) { inp.value = freq; inp.classList.add('changed'); }
   });
-  updateRowTotals();
+  updateStuRowTotals();
 }
 
-async function saveAttendance() {
-  const cid = parseInt(document.getElementById('attClass').value);
-  const year = parseInt(document.getElementById('attYear').value);
-  if (!cid) { showToast('请选择班级', false); return; }
+async function saveStuAttendance() {
+  const filterId = document.getElementById('stuClassFilter').value;
+  const year = parseInt(document.getElementById('stuYearFilter').value);
+  if (filterId === 'all') { showToast('请先选择班级', false); return; }
+  const cid = parseInt(filterId);
 
-  const inputs = document.querySelectorAll('.att-input');
+  const inputs = document.querySelectorAll('.stu-att-input');
   const records = [];
   inputs.forEach(inp => {
     const sid = parseInt(inp.dataset.sid);
@@ -680,13 +711,12 @@ async function saveAttendance() {
 
   if (records.length === 0) { showToast('没有可保存的记录', false); return; }
 
-  // 批量 upsert 全年数据
   const { error } = await sb.from('attendance').upsert(records, { onConflict: 'student_id,year,month' });
   if (error) { showToast('保存失败: '+error.message, false); return; }
 
   await loadAll();
-  renderAttendance();
-  showToast('已保存 ' + (records.length / 12) + ' 名学员 × 12个月');
+  renderStudents();
+  showToast('已保存 ' + (records.length / 12) + ' 名学员 x 12个月');
 }
 
 // ═══════════════════════════════════════
@@ -760,8 +790,6 @@ function initApp() {
   renderClasses();
   fillStuClassFilter();
   renderStudents();
-  fillAttClass();
-  renderAttendance();
   renderClassProgress();
 }
 
