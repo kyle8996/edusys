@@ -1,0 +1,890 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DK·邻里 教务系统（云端免费版）</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,'Microsoft YaHei','PingFang SC',sans-serif;background:#f0f4f8;color:#1e293b;font-size:14px;min-height:100vh}
+.nav{background:linear-gradient(135deg,#1e3a5f,#2563eb);color:#fff;padding:12px 28px;display:flex;gap:24px;align-items:center;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(0,0,0,.15)}
+.nav h1{font-size:18px;font-weight:700;white-space:nowrap}
+.nav .tabs{display:flex;gap:4px;flex-wrap:wrap}
+.nav .tabs button{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:#fff;padding:7px 18px;border-radius:8px;cursor:pointer;font-size:13px;transition:.2s;white-space:nowrap}
+.nav .tabs button:hover,.nav .tabs button.active{background:rgba(255,255,255,.25);border-color:#fff}
+.card{background:#fff;border-radius:14px;box-shadow:0 2px 12px rgba(0,0,0,.06);margin:16px 24px;padding:20px 24px}
+.card h2{font-size:16px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.toolbar{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center}
+.toolbar select,.toolbar input[type=number]{padding:7px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;background:#fff}
+.btn{padding:7px 16px;border-radius:8px;border:none;font-size:13px;cursor:pointer;font-weight:600;transition:.15s;white-space:nowrap}
+.btn-primary{background:#2563eb;color:#fff}
+.btn-primary:hover{background:#1d4ed8}
+.btn-success{background:#10b981;color:#fff}
+.btn-success:hover{background:#059669}
+.btn-danger{background:#ef4444;color:#fff}
+.btn-danger:hover{background:#dc2626}
+.btn-gray{background:#e2e8f0;color:#475569}
+.btn-gray:hover{background:#cbd5e1}
+.btn-sm{padding:4px 10px;font-size:11px;border-radius:6px}
+.btn-xs{padding:2px 8px;font-size:10px;border-radius:4px}
+.tbl{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:700px}
+thead th{background:#f8fafc;padding:10px 8px;font-size:12px;color:#475569;font-weight:600;text-align:center;border-bottom:2px solid #e2e8f0;white-space:nowrap;position:sticky;top:0}
+tbody td{padding:8px 8px;font-size:13px;text-align:center;border-bottom:1px solid #f1f5f9}
+tbody tr:hover{background:#f8fafc}
+.tag{font-size:10px;padding:2px 8px;border-radius:12px;font-weight:600}
+.tag-k1{background:#dbeafe;color:#1e40af}
+.tag-k2{background:#d1fae5;color:#065f46}
+.tag-s{background:#ede9fe;color:#5b21b6}
+.modal-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.4);z-index:200;justify-content:center;align-items:center}
+.modal-overlay.show{display:flex}
+.modal{background:#fff;border-radius:16px;padding:28px;width:90%;max-width:520px;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+.modal h3{font-size:17px;font-weight:700;margin-bottom:18px}
+.modal .form-group{margin-bottom:14px}
+.modal .form-group label{display:block;font-size:13px;color:#475569;font-weight:600;margin-bottom:5px}
+.modal .form-group input,.modal .form-group select{width:100%;padding:8px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px}
+.modal .form-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:20px}
+.att-form{display:flex;gap:12px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+.att-table-wrap{max-height:60vh;overflow-y:auto}
+.att-table-wrap td input{width:60px;padding:4px 6px;border:1px solid #cbd5e1;border-radius:6px;text-align:center;font-size:13px}
+.att-table-wrap td input.changed{background:#fef3c7;border-color:#f59e0b}
+.pbar{height:6px;background:#e2e8f0;border-radius:3px;overflow:hidden;width:60px;display:inline-block;vertical-align:middle;margin-top:3px}
+.pfill{height:100%;border-radius:3px}
+.toast{position:fixed;top:20px;right:20px;padding:12px 20px;border-radius:10px;color:#fff;font-size:14px;font-weight:600;z-index:300;opacity:0;transform:translateX(20px);transition:.3s}
+.toast.show{opacity:1;transform:translateX(0)}
+.toast-ok{background:#10b981}
+.toast-err{background:#ef4444}
+.section{display:none}
+.section.active{display:block}
+.cls-header{background:#f1f5f9;font-weight:700;font-size:13px}
+.cls-header td{padding:10px 8px;border-bottom:2px solid #cbd5e1}
+.row-warn{background:#fff7ed !important}
+.row-warn td{color:#c2410c}
+.badge-warn{font-size:9px;background:#f97316;color:#fff;padding:1px 6px;border-radius:10px;font-weight:700;margin-left:4px;vertical-align:middle}
+.row-grad{background:#f1f5f9 !important;opacity:0.6}
+.row-grad td{color:#94a3b8}
+.grad-tag{font-size:9px;background:#94a3b8;color:#fff;padding:1px 6px;border-radius:10px;margin-left:4px}
+tr[draggable="true"]{cursor:grab}
+tr[draggable="true"]:active{cursor:grabbing}
+tr[draggable="true"]:hover{background:#f0f9ff !important}
+tr.dragging{opacity:0.4;background:#dbeafe !important}
+tr.drag-over-top td{box-shadow:inset 0 3px 0 0 #3b82f6}
+tr.drag-over-bottom td{box-shadow:inset 0 -3px 0 0 #3b82f6}
+.drag-hint{color:#cbd5e1;font-size:10px;user-select:none}
+tr:hover .drag-hint{color:#94a3b8}
+.status-toggle{display:inline-flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;user-select:none}
+.status-toggle input{margin:0}
+.loading-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,.7);z-index:400;justify-content:center;align-items:center}
+.loading-overlay.show{display:flex}
+.loading-spinner{text-align:center}
+.loading-spinner .sp{width:36px;height:36px;border:3px solid #e2e8f0;border-top-color:#2563eb;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.backup-bar{background:#fff;border-bottom:1px solid #e2e8f0;padding:8px 28px;display:flex;align-items:center;gap:10px;font-size:12px;color:#64748b;flex-wrap:wrap}
+.backup-bar b{color:#1e40af}
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loadingOverlay"><div class="loading-spinner"><div class="sp"></div><div style="font-size:14px;color:#475569">处理中...</div></div></div>
+<div class="toast" id="toast"></div>
+
+<!-- 备份栏 -->
+<div class="backup-bar">
+  <span>💾 数据存储在浏览器中（免费、离线可用）</span>
+  <button class="btn btn-sm btn-success" onclick="exportData()">📤 导出备份</button>
+  <button class="btn btn-sm btn-gray" onclick="document.getElementById('importFile').click()">📥 导入备份</button>
+  <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+  <button class="btn btn-sm btn-danger" onclick="resetData()" title="恢复为初始数据">🔄 重置</button>
+  <span style="margin-left:auto;font-size:11px" id="lastSave"></span>
+</div>
+
+<!-- 导航 -->
+<div class="nav">
+  <h1>DK·邻里 教务系统</h1>
+  <div class="tabs">
+    <button class="active" onclick="switchTab('classes')">班级管理</button>
+    <button onclick="switchTab('students')">学员出勤</button>
+    <button onclick="switchTab('attendance')">课时登记</button>
+    <button onclick="switchTab('stats')">班级排课</button>
+  </div>
+</div>
+
+<!-- Tab 1: 班级管理 -->
+<div class="section active" id="sec-classes">
+  <div class="card">
+    <h2>班级列表 <button class="btn btn-primary btn-sm" onclick="openClassModal()">＋ 新增班级</button></h2>
+    <div class="tbl"><table>
+      <thead><tr>
+        <th style="text-align:left;width:140px">班级名称</th>
+        <th style="width:60px">阶段</th>
+        <th style="width:80px">排课频率</th>
+        <th style="width:80px">阶段总课时</th>
+        <th style="width:80px">年前已上</th>
+        <th style="width:100px">学员数</th>
+        <th style="width:120px">操作</th>
+      </tr></thead>
+      <tbody id="classTbody"></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- Tab 2: 学员出勤 -->
+<div class="section" id="sec-students">
+  <div class="card">
+    <h2>学员列表
+      <select id="stuClassFilter" onchange="renderStudents()" style="margin-left:12px;padding:6px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px">
+        <option value="all">全部班级</option>
+      </select>
+      <label class="status-toggle" style="margin-left:12px;font-size:13px">
+        <input type="checkbox" id="showGraduated" onchange="renderStudents()"> 显示毕业学员
+      </label>
+      <button class="btn btn-primary btn-sm" onclick="openStudentModal()" style="margin-left:auto">＋ 新增学员</button>
+    </h2>
+    <div class="tbl"><table>
+      <thead id="stuThead"><tr>
+        <th style="width:50px">拖拽</th>
+        <th style="text-align:left;width:100px">姓名</th>
+        <th style="width:120px">班级</th>
+        <th style="width:80px">合计</th>
+        <th style="width:90px">缴费课时</th>
+        <th style="width:90px">剩余课时</th>
+        <th style="width:130px">操作</th>
+      </tr></thead>
+      <tbody id="stuTbody"></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- Tab 3: 课时登记 -->
+<div class="section" id="sec-attendance">
+  <div class="card">
+    <h2>课时登记</h2>
+    <div class="att-form">
+      <label>班级：<select id="attClass" onchange="renderAttendance()"><option value="">请选择班级</option></select></label>
+      <label>年：<input type="number" id="attYear" value="2026" min="2020" max="2030" style="width:70px" onchange="renderAttendance()"></label>
+      <label>月：<select id="attMonth" onchange="renderAttendance()">
+        <option value="3" selected>3月</option><option value="4">4月</option><option value="5">5月</option><option value="6">6月</option>
+        <option value="7">7月</option><option value="8">8月</option><option value="9">9月</option><option value="10">10月</option><option value="11">11月</option><option value="12">12月</option>
+      </select></label>
+      <button class="btn btn-success" onclick="markAllPresent()">一键全勤</button>
+      <button class="btn btn-primary" onclick="saveAttendance()">保存登记</button>
+      <span style="font-size:12px;color:#94a3b8;margin-left:8px" id="attInfo"></span>
+    </div>
+    <div class="att-table-wrap"><table><thead><tr>
+      <th style="text-align:left;width:100px">学员姓名</th>
+      <th style="width:120px">出勤课时</th>
+    </tr></thead><tbody id="attTbody"></tbody></table></div>
+  </div>
+</div>
+
+<!-- Tab 4: 班级排课 -->
+<div class="section" id="sec-stats">
+  <div class="card">
+    <h2>班级排课进度 <button class="btn btn-success btn-sm" onclick="saveClassProgress()">保存修改</button>
+      <button class="btn btn-gray btn-sm" onclick="renderClassProgress()">重置</button></h2>
+    <div class="tbl"><table><thead><tr>
+      <th style="text-align:left">班级</th>
+      <th>年前已上</th><th>3月排课</th><th>4月排课</th><th>5月排课</th><th>6月排课</th>
+      <th>累计已上</th><th>阶段总课时</th><th>进度</th><th>状态</th>
+    </tr></thead><tbody id="statsTbody"></tbody></table></div>
+  </div>
+</div>
+
+<!-- 弹窗：班级 -->
+<div class="modal-overlay" id="classModal">
+  <div class="modal">
+    <h3 id="classModalTitle">新增班级</h3>
+    <input type="hidden" id="classEditId">
+    <div class="form-group"><label>班级名称</label><input id="className" placeholder="如 K1005(三六)"></div>
+    <div class="form-group"><label>阶段</label><select id="classPhase"><option value="K1">K1</option><option value="K2">K2</option><option value="S">S</option></select></div>
+    <div class="form-group"><label>排课频率（节/月）</label><input type="number" id="classFreq" value="8" min="1"></div>
+    <div class="form-group"><label>阶段总课时</label><input type="number" id="classTotal" value="88" min="1"></div>
+    <div class="form-group"><label>年前已上课时</label><input type="number" id="classBefore" value="0" min="0"></div>
+    <div class="form-actions"><button class="btn btn-gray" onclick="closeClassModal()">取消</button><button class="btn btn-primary" onclick="saveClass()">保存</button></div>
+  </div>
+</div>
+
+<!-- 弹窗：学员 -->
+<div class="modal-overlay" id="stuModal">
+  <div class="modal">
+    <h3 id="stuModalTitle">新增学员</h3>
+    <input type="hidden" id="stuEditId">
+    <div class="form-group"><label>学员姓名</label><input id="stuName" placeholder="学员全名"></div>
+    <div class="form-group"><label>所属班级</label><select id="stuClass"></select></div>
+    <div class="form-group"><label>缴费课时数</label><input type="number" id="stuPaid" value="0" min="0"></div>
+    <div class="form-group"><label>学员状态</label><select id="stuStatus"><option value="在读">在读</option><option value="毕业">毕业</option></select></div>
+    <div class="form-actions"><button class="btn btn-gray" onclick="closeStudentModal()">取消</button><button class="btn btn-primary" onclick="saveStudent()">保存</button></div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════
+// 数据层 — 纯 localStorage（免费、无需服务器）
+// ═══════════════════════════════════════
+const SEED_DATA = {"classes": [{"班级ID": 1, "班级名称": "K1001(三六)", "阶段": "K1", "排课频率(节/月)": 10, "阶段总课时": 42, "年前已上课时": 46, "3月排课": 0, "4月排课": 0, "5月排课": 0, "6月排课": 0}, {"班级ID": 2, "班级名称": "K1002(四六)", "阶段": "K1", "排课频率(节/月)": 10, "阶段总课时": 68, "年前已上课时": 20, "3月排课": 0, "4月排课": 0, "5月排课": 0, "6月排课": 0}, {"班级ID": 3, "班级名称": "K1003(日)", "阶段": "K1", "排课频率(节/月)": 6, "阶段总课时": 88, "年前已上课时": 0, "3月排课": 0, "4月排课": 0, "5月排课": 0, "6月排课": 0}, {"班级ID": 4, "班级名称": "K2001(四六)", "阶段": "K2", "排课频率(节/月)": 12, "阶段总课时": 102, "年前已上课时": 0, "3月排课": 0, "4月排课": 0, "5月排课": 0, "6月排课": 0}, {"班级ID": 5, "班级名称": "S1001(三日)", "阶段": "S", "排课频率(节/月)": 10, "阶段总课时": 84, "年前已上课时": 0, "3月排课": 0, "4月排课": 0, "5月排课": 0, "6月排课": 0}, {"班级ID": 6, "班级名称": "S3001(四六)", "阶段": "S", "排课频率(节/月)": 10, "阶段总课时": 84, "年前已上课时": 0, "3月排课": 0, "4月排课": 0, "5月排课": 0, "6月排课": 0}, {"班级ID": 7, "班级名称": "K1004(未开班)", "阶段": "K1", "排课频率(节/月)": 10, "阶段总课时": 88, "年前已上课时": 0, "3月排课": 0, "4月排课": 0, "5月排课": 0, "6月排课": 0}], "students": [{"学员ID": 1, "姓名": "黄梓铭", "班级ID": 1, "缴费课时数": 47, "剩余课时数": 12.5, "状态": "在读", "排序": 0}, {"学员ID": 2, "姓名": "陈攸诺", "班级ID": 1, "缴费课时数": 46, "剩余课时数": 14.5, "状态": "在读", "排序": 1}, {"学员ID": 3, "姓名": "苏灏渝", "班级ID": 1, "缴费课时数": 61, "剩余课时数": 29, "状态": "在读", "排序": 2}, {"学员ID": 4, "姓名": "林歆然", "班级ID": 1, "缴费课时数": 44, "剩余课时数": 13, "状态": "在读", "排序": 3}, {"学员ID": 5, "姓名": "周裕皓", "班级ID": 1, "缴费课时数": 88, "剩余课时数": 68.5, "状态": "在读", "排序": 4}, {"学员ID": 6, "姓名": "周清芷", "班级ID": 1, "缴费课时数": 88, "剩余课时数": 72, "状态": "在读", "排序": 5}, {"学员ID": 7, "姓名": "温嘉伦", "班级ID": 1, "缴费课时数": 88, "剩余课时数": 84.5, "状态": "在读", "排序": 6}, {"学员ID": 8, "姓名": "邬旻灏", "班级ID": 1, "缴费课时数": 88, "剩余课时数": 86.5, "状态": "在读", "排序": 7}, {"学员ID": 9, "姓名": "王凯妮", "班级ID": 2, "缴费课时数": 44, "剩余课时数": 21, "状态": "在读", "排序": 0}, {"学员ID": 10, "姓名": "李逸少", "班级ID": 2, "缴费课时数": 47, "剩余课时数": 15.5, "状态": "在读", "排序": 0}, {"学员ID": 11, "姓名": "刘睿怡", "班级ID": 2, "缴费课时数": 30, "剩余课时数": 7.5, "状态": "在读", "排序": 0}, {"学员ID": 12, "姓名": "刘菲尔", "班级ID": 2, "缴费课时数": 95, "剩余课时数": 65, "状态": "在读", "排序": 0}, {"学员ID": 13, "姓名": "张文钰", "班级ID": 2, "缴费课时数": 95, "剩余课时数": 68, "状态": "在读", "排序": 0}, {"学员ID": 14, "姓名": "邬卓衡", "班级ID": 2, "缴费课时数": 88, "剩余课时数": 63.5, "状态": "在读", "排序": 0}, {"学员ID": 15, "姓名": "卢思广", "班级ID": 2, "缴费课时数": 44, "剩余课时数": 26.5, "状态": "在读", "排序": 0}, {"学员ID": 16, "姓名": "邹瑾", "班级ID": 2, "缴费课时数": 88, "剩余课时数": 88, "状态": "在读", "排序": 0}, {"学员ID": 17, "姓名": "张丞逸", "班级ID": 3, "缴费课时数": 48, "剩余课时数": 42, "状态": "在读", "排序": 7}, {"学员ID": 18, "姓名": "岑婉瑜", "班级ID": 3, "缴费课时数": 27, "剩余课时数": 9, "状态": "在读", "排序": 0}, {"学员ID": 19, "姓名": "黄雅莉", "班级ID": 3, "缴费课时数": 44, "剩余课时数": 26, "状态": "在读", "排序": 1}, {"学员ID": 20, "姓名": "安歌", "班级ID": 3, "缴费课时数": 88, "剩余课时数": 71.5, "状态": "在读", "排序": 2}, {"学员ID": 21, "姓名": "张璟乐", "班级ID": 3, "缴费课时数": 88, "剩余课时数": 73, "状态": "在读", "排序": 3}, {"学员ID": 22, "姓名": "陈艺昕", "班级ID": 3, "缴费课时数": 44, "剩余课时数": 33.5, "状态": "在读", "排序": 4}, {"学员ID": 23, "姓名": "邱语汐", "班级ID": 3, "缴费课时数": 44, "剩余课时数": 30.5, "状态": "在读", "排序": 5}, {"学员ID": 24, "姓名": "李先泽", "班级ID": 3, "缴费课时数": 60, "剩余课时数": 55.5, "状态": "在读", "排序": 6}, {"学员ID": 25, "姓名": "梁澄澈", "班级ID": 4, "缴费课时数": 15, "剩余课时数": 0, "状态": "毕业", "排序": 0}, {"学员ID": 26, "姓名": "高雪晴", "班级ID": 4, "缴费课时数": 51, "剩余课时数": 19.5, "状态": "在读", "排序": 0}, {"学员ID": 27, "姓名": "严宝霆", "班级ID": 4, "缴费课时数": 102, "剩余课时数": 64.5, "状态": "在读", "排序": 0}, {"学员ID": 28, "姓名": "王骏铭", "班级ID": 4, "缴费课时数": 51, "剩余课时数": 15, "状态": "在读", "排序": 0}, {"学员ID": 29, "姓名": "善知Daniel", "班级ID": 4, "缴费课时数": 51, "剩余课时数": 15, "状态": "在读", "排序": 0}, {"学员ID": 30, "姓名": "陈楷淇", "班级ID": 4, "缴费课时数": 102, "剩余课时数": 66, "状态": "在读", "排序": 0}, {"学员ID": 31, "姓名": "张晓淇", "班级ID": 4, "缴费课时数": 102, "剩余课时数": 67.5, "状态": "在读", "排序": 0}, {"学员ID": 32, "姓名": "张沐晨", "班级ID": 4, "缴费课时数": 102, "剩余课时数": 64.5, "状态": "在读", "排序": 0}, {"学员ID": 33, "姓名": "胡昕悦", "班级ID": 4, "缴费课时数": 102, "剩余课时数": 96, "状态": "在读", "排序": 0}, {"学员ID": 34, "姓名": "王凯琪", "班级ID": 5, "缴费课时数": 49, "剩余课时数": 17, "状态": "在读", "排序": 0}, {"学员ID": 35, "姓名": "刘子凡", "班级ID": 5, "缴费课时数": 66, "剩余课时数": 44, "状态": "在读", "排序": 0}, {"学员ID": 36, "姓名": "何依玲", "班级ID": 5, "缴费课时数": 49, "剩余课时数": 12.5, "状态": "在读", "排序": 0}, {"学员ID": 37, "姓名": "邝弘熙", "班级ID": 5, "缴费课时数": 55, "剩余课时数": 19.5, "状态": "在读", "排序": 0}, {"学员ID": 38, "姓名": "林子苏", "班级ID": 5, "缴费课时数": 55, "剩余课时数": 18.5, "状态": "在读", "排序": 0}, {"学员ID": 39, "姓名": "周诗静", "班级ID": 5, "缴费课时数": 42, "剩余课时数": 16, "状态": "在读", "排序": 0}, {"学员ID": 40, "姓名": "何雨琪", "班级ID": 5, "缴费课时数": 84, "剩余课时数": 61.5, "状态": "在读", "排序": 0}, {"学员ID": 41, "姓名": "雷承安", "班级ID": 5, "缴费课时数": 84, "剩余课时数": 64.5, "状态": "在读", "排序": 0}, {"学员ID": 42, "姓名": "江诺伊", "班级ID": 6, "缴费课时数": 49, "剩余课时数": 14.5, "状态": "在读", "排序": 0}, {"学员ID": 43, "姓名": "王伊涵", "班级ID": 6, "缴费课时数": 51, "剩余课时数": 16.5, "状态": "在读", "排序": 0}, {"学员ID": 44, "姓名": "陈鹏宇", "班级ID": 6, "缴费课时数": 50, "剩余课时数": 15.5, "状态": "在读", "排序": 0}, {"学员ID": 45, "姓名": "林昱彤", "班级ID": 6, "缴费课时数": 51, "剩余课时数": 16.5, "状态": "在读", "排序": 0}, {"学员ID": 46, "姓名": "李佩潼", "班级ID": 6, "缴费课时数": 42, "剩余课时数": 10, "状态": "在读", "排序": 0}, {"学员ID": 47, "姓名": "唐甜君", "班级ID": 6, "缴费课时数": 84, "剩余课时数": 69, "状态": "在读", "排序": 0}, {"学员ID": 48, "姓名": "朱子钧", "班级ID": 7, "缴费课时数": 44, "剩余课时数": 44, "状态": "在读", "排序": 0}, {"学员ID": 49, "姓名": "朱糖糖", "班级ID": 7, "缴费课时数": 88, "剩余课时数": 88, "状态": "在读", "排序": 0}, {"学员ID": 50, "姓名": "朱彦沂", "班级ID": 7, "缴费课时数": 88, "剩余课时数": 88, "状态": "在读", "排序": 0}], "attendance": [{"记录ID": 1, "学员ID": 1, "年": 2026, "月": 3, "出勤课时": 9}, {"记录ID": 2, "学员ID": 1, "年": 2026, "月": 4, "出勤课时": 9.5}, {"记录ID": 3, "学员ID": 1, "年": 2026, "月": 5, "出勤课时": 11}, {"记录ID": 4, "学员ID": 1, "年": 2026, "月": 6, "出勤课时": 5}, {"记录ID": 5, "学员ID": 2, "年": 2026, "月": 3, "出勤课时": 9}, {"记录ID": 6, "学员ID": 2, "年": 2026, "月": 4, "出勤课时": 9.5}, {"记录ID": 7, "学员ID": 2, "年": 2026, "月": 5, "出勤课时": 9.5}, {"记录ID": 8, "学员ID": 2, "年": 2026, "月": 6, "出勤课时": 3.5}, {"记录ID": 9, "学员ID": 3, "年": 2026, "月": 3, "出勤课时": 9}, {"记录ID": 10, "学员ID": 3, "年": 2026, "月": 4, "出勤课时": 9.5}, {"记录ID": 11, "学员ID": 3, "年": 2026, "月": 5, "出勤课时": 10}, {"记录ID": 12, "学员ID": 3, "年": 2026, "月": 6, "出勤课时": 3.5}, {"记录ID": 13, "学员ID": 4, "年": 2026, "月": 3, "出勤课时": 6.5}, {"记录ID": 14, "学员ID": 4, "年": 2026, "月": 4, "出勤课时": 9.5}, {"记录ID": 15, "学员ID": 4, "年": 2026, "月": 5, "出勤课时": 10}, {"记录ID": 16, "学员ID": 4, "年": 2026, "月": 6, "出勤课时": 5}, {"记录ID": 17, "学员ID": 5, "年": 2026, "月": 3, "出勤课时": 0}, {"记录ID": 18, "学员ID": 5, "年": 2026, "月": 4, "出勤课时": 5}, {"记录ID": 19, "学员ID": 5, "年": 2026, "月": 5, "出勤课时": 9.5}, {"记录ID": 20, "学员ID": 5, "年": 2026, "月": 6, "出勤课时": 5}, {"记录ID": 21, "学员ID": 6, "年": 2026, "月": 3, "出勤课时": 0}, {"记录ID": 22, "学员ID": 6, "年": 2026, "月": 4, "出勤课时": 1.5}, {"记录ID": 23, "学员ID": 6, "年": 2026, "月": 5, "出勤课时": 9.5}, {"记录ID": 24, "学员ID": 6, "年": 2026, "月": 6, "出勤课时": 5}, {"记录ID": 25, "学员ID": 7, "年": 2026, "月": 3, "出勤课时": 0}, {"记录ID": 26, "学员ID": 7, "年": 2026, "月": 4, "出勤课时": 0}, {"记录ID": 27, "学员ID": 7, "年": 2026, "月": 5, "出勤课时": 0}, {"记录ID": 28, "学员ID": 7, "年": 2026, "月": 6, "出勤课时": 3.5}, {"记录ID": 29, "学员ID": 8, "年": 2026, "月": 3, "出勤课时": 0}, {"记录ID": 30, "学员ID": 8, "年": 2026, "月": 4, "出勤课时": 0}, {"记录ID": 31, "学员ID": 8, "年": 2026, "月": 5, "出勤课时": 0}, {"记录ID": 32, "学员ID": 8, "年": 2026, "月": 6, "出勤课时": 1.5}, {"记录ID": 33, "学员ID": 9, "年": 2026, "月": 3, "出勤课时": 4}, {"记录ID": 34, "学员ID": 9, "年": 2026, "月": 4, "出勤课时": 7}, {"记录ID": 35, "学员ID": 9, "年": 2026, "月": 5, "出勤课时": 8.5}, {"记录ID": 36, "学员ID": 9, "年": 2026, "月": 6, "出勤课时": 3.5}, {"记录ID": 37, "学员ID": 10, "年": 2026, "月": 3, "出勤课时": 5.5}, {"记录ID": 38, "学员ID": 10, "年": 2026, "月": 4, "出勤课时": 9.5}, {"记录ID": 39, "学员ID": 10, "年": 2026, "月": 5, "出勤课时": 11.5}, {"记录ID": 40, "学员ID": 10, "年": 2026, "月": 6, "出勤课时": 5}, {"记录ID": 41, "学员ID": 11, "年": 2026, "月": 3, "出勤课时": 4}, {"记录ID": 42, "学员ID": 11, "年": 2026, "月": 4, "出勤课时": 6.5}, {"记录ID": 43, "学员ID": 11, "年": 2026, "月": 5, "出勤课时": 10}, {"记录ID": 44, "学员ID": 11, "年": 2026, "月": 6, "出勤课时": 2}, {"记录ID": 45, "学员ID": 12, "年": 2026, "月": 3, "出勤课时": 4}, {"记录ID": 46, "学员ID": 12, "年": 2026, "月": 4, "出勤课时": 9.5}, {"记录ID": 47, "学员ID": 12, "年": 2026, "月": 5, "出勤课时": 11.5}, {"记录ID": 48, "学员ID": 12, "年": 2026, "月": 6, "出勤课时": 5}, {"记录ID": 49, "学员ID": 13, "年": 2026, "月": 3, "出勤课时": 4}, {"记录ID": 50, "学员ID": 13, "年": 2026, "月": 4, "出勤课时": 9.5}, {"记录ID": 51, "学员ID": 13, "年": 2026, "月": 5, "出勤课时": 8.5}, {"记录ID": 52, "学员ID": 13, "年": 2026, "月": 6, "出勤课时": 5}, {"记录ID": 53, "学员ID": 14, "年": 2026, "月": 3, "出勤课时": 0}, {"记录ID": 54, "学员ID": 14, "年": 2026, "月": 4, "出勤课时": 9.5}, {"记录ID": 55, "学员ID": 14, "年": 2026, "月": 5, "出勤课时": 10}, {"记录ID": 56, "学员ID": 14, "年": 2026, "月": 6, "出勤课时": 5}, {"记录ID": 57, "学员ID": 15, "年": 2026, "月": 3, "出勤课时": 0}, {"记录ID": 58, "学员ID": 15, "年": 2026, "月": 4, "出勤课时": 2.5}, {"记录ID": 59, "学员ID": 15, "年": 2026, "月": 5, "出勤课时": 11.5}, {"记录ID": 60, "学员ID": 15, "年": 2026, "月": 6, "出勤课时": 3.5}, {"记录ID": 61, "学员ID": 16, "年": 2026, "月": 3, "出勤课时": 0}, {"记录ID": 62, "学员ID": 16, "年": 2026, "月": 4, "出勤课时": 0}, {"记录ID": 63, "学员ID": 16, "年": 2026, "月": 5, "出勤课时": 0}, {"记录ID": 64, "学员ID": 16, "年": 2026, "月": 6, "出勤课时": 0}, {"记录ID": 65, "学员ID": 17, "年": 2026, "月": 3, "出勤课时": 1.5}, {"记录ID": 66, "学员ID": 17, "年": 2026, "月": 4, "出勤课时": 0}, {"记录ID": 67, "学员ID": 17, "年": 2026, "月": 5, "出勤课时": 1.5}, {"记录ID": 68, "学员ID": 17, "年": 2026, "月": 6, "出勤课时": 3}, {"记录ID": 69, "学员ID": 18, "年": 2026, "月": 3, "出勤课时": 3}, {"记录ID": 70, "学员ID": 18, "年": 2026, "月": 4, "出勤课时": 4.5}, {"记录ID": 71, "学员ID": 18, "年": 2026, "月": 5, "出勤课时": 7.5}, {"记录ID": 72, "学员ID": 18, "年": 2026, "月": 6, "出勤课时": 3}, {"记录ID": 73, "学员ID": 19, "年": 2026, "月": 3, "出勤课时": 3}, {"记录ID": 74, "学员ID": 19, "年": 2026, "月": 4, "出勤课时": 4.5}, {"记录ID": 75, "学员ID": 19, "年": 2026, "月": 5, "出勤课时": 7.5}, {"记录ID": 76, "学员ID": 19, "年": 2026, "月": 6, "出勤课时": 3}, {"记录ID": 77, "学员ID": 20, "年": 2026, "月": 3, "出勤课时": 3}, {"记录ID": 78, "学员ID": 20, "年": 2026, "月": 4, "出勤课时": 4.5}, {"记录ID": 79, "学员ID": 20, "年": 2026, "月": 5, "出勤课时": 7.5}, {"记录ID": 80, "学员ID": 20, "年": 2026, "月": 6, "出勤课时": 1.5}, {"记录ID": 81, "学员ID": 21, "年": 2026, "月": 3, "出勤课时": 0}, {"记录ID": 82, "学员ID": 21, "年": 2026, "月": 4, "出勤课时": 4.5}, {"记录ID": 83, "学员ID": 21, "年": 2026, "月": 5, "出勤课时": 7.5}, {"记录ID": 84, "学员ID": 21, "年": 2026, "月": 6, "出勤课时": 3}, {"记录ID": 85, "学员ID": 22, "年": 2026, "月": 3, "出勤课时": 0}, {"记录ID": 86, "学员ID": 22, "年": 2026, "月": 4, "出勤课时": 3}, {"记录ID": 87, "学员ID": 22, "年": 2026, "月": 5, "出勤课时": 4.5}, {"记录ID": 88, "学员ID": 22, "年": 2026, "月": 6, "出勤课时": 3}, {"记录ID": 89, "学员ID": 23, "年": 2026, "月": 3, "出勤课时": 0}, {"记录ID": 90, "学员ID": 23, "年": 2026, "月": 4, "出勤课时": 3}, {"记录ID": 91, "学员ID": 23, "年": 2026, "月": 5, "出勤课时": 7.5}, {"记录ID": 92, "学员ID": 23, "年": 2026, "月": 6, "出勤课时": 3}, {"记录ID": 93, "学员ID": 24, "年": 2026, "月": 3, "出勤课时": 0}, {"记录ID": 94, "学员ID": 24, "年": 2026, "月": 4, "出勤课时": 0}, {"记录ID": 95, "学员ID": 24, "年": 2026, "月": 5, "出勤课时": 1.5}, {"记录ID": 96, "学员ID": 24, "年": 2026, "月": 6, "出勤课时": 3}, {"记录ID": 97, "学员ID": 25, "年": 2026, "月": 3, "出勤课时": 4.5}, {"记录ID": 98, "学员ID": 25, "年": 2026, "月": 4, "出勤课时": 10.5}, {"记录ID": 99, "学员ID": 25, "年": 2026, "月": 5, "出勤课时": 0}, {"记录ID": 100, "学员ID": 25, "年": 2026, "月": 6, "出勤课时": 0}, {"记录ID": 101, "学员ID": 26, "年": 2026, "月": 3, "出勤课时": 6}, {"记录ID": 102, "学员ID": 26, "年": 2026, "月": 4, "出勤课时": 9}, {"记录ID": 103, "学员ID": 26, "年": 2026, "月": 5, "出勤课时": 10.5}, {"记录ID": 104, "学员ID": 26, "年": 2026, "月": 6, "出勤课时": 6}, {"记录ID": 105, "学员ID": 27, "年": 2026, "月": 3, "出勤课时": 6}, {"记录ID": 106, "学员ID": 27, "年": 2026, "月": 4, "出勤课时": 12}, {"记录ID": 107, "学员ID": 27, "年": 2026, "月": 5, "出勤课时": 13.5}, {"记录ID": 108, "学员ID": 27, "年": 2026, "月": 6, "出勤课时": 6}, {"记录ID": 109, "学员ID": 28, "年": 2026, "月": 3, "出勤课时": 6}, {"记录ID": 110, "学员ID": 28, "年": 2026, "月": 4, "出勤课时": 10.5}, {"记录ID": 111, "学员ID": 28, "年": 2026, "月": 5, "出勤课时": 13.5}, {"记录ID": 112, "学员ID": 28, "年": 2026, "月": 6, "出勤课时": 6}, {"记录ID": 113, "学员ID": 29, "年": 2026, "月": 3, "出勤课时": 4.5}, {"记录ID": 114, "学员ID": 29, "年": 2026, "月": 4, "出勤课时": 12}, {"记录ID": 115, "学员ID": 29, "年": 2026, "月": 5, "出勤课时": 13.5}, {"记录ID": 116, "学员ID": 29, "年": 2026, "月": 6, "出勤课时": 6}, {"记录ID": 117, "学员ID": 30, "年": 2026, "月": 3, "出勤课时": 6}, {"记录ID": 118, "学员ID": 30, "年": 2026, "月": 4, "出勤课时": 10.5}, {"记录ID": 119, "学员ID": 30, "年": 2026, "月": 5, "出勤课时": 13.5}, {"记录ID": 120, "学员ID": 30, "年": 2026, "月": 6, "出勤课时": 6}, {"记录ID": 121, "学员ID": 31, "年": 2026, "月": 3, "出勤课时": 4.5}, {"记录ID": 122, "学员ID": 31, "年": 2026, "月": 4, "出勤课时": 12}, {"记录ID": 123, "学员ID": 31, "年": 2026, "月": 5, "出勤课时": 12}, {"记录ID": 124, "学员ID": 31, "年": 2026, "月": 6, "出勤课时": 6}, {"记录ID": 125, "学员ID": 32, "年": 2026, "月": 3, "出勤课时": 6}, {"记录ID": 126, "学员ID": 32, "年": 2026, "月": 4, "出勤课时": 12}, {"记录ID": 127, "学员ID": 32, "年": 2026, "月": 5, "出勤课时": 13.5}, {"记录ID": 128, "学员ID": 32, "年": 2026, "月": 6, "出勤课时": 6}, {"记录ID": 129, "学员ID": 33, "年": 2026, "月": 3, "出勤课时": 0}, {"记录ID": 130, "学员ID": 33, "年": 2026, "月": 4, "出勤课时": 0}, {"记录ID": 131, "学员ID": 33, "年": 2026, "月": 5, "出勤课时": 0}, {"记录ID": 132, "学员ID": 33, "年": 2026, "月": 6, "出勤课时": 6}, {"记录ID": 133, "学员ID": 34, "年": 2026, "月": 3, "出勤课时": 10.5}, {"记录ID": 134, "学员ID": 34, "年": 2026, "月": 4, "出勤课时": 9.5}, {"记录ID": 135, "学员ID": 34, "年": 2026, "月": 5, "出勤课时": 7}, {"记录ID": 136, "学员ID": 34, "年": 2026, "月": 6, "出勤课时": 5}, {"记录ID": 137, "学员ID": 35, "年": 2026, "月": 3, "出勤课时": 0}, {"记录ID": 138, "学员ID": 35, "年": 2026, "月": 4, "出勤课时": 8.5}, {"记录ID": 139, "学员ID": 35, "年": 2026, "月": 5, "出勤课时": 8.5}, {"记录ID": 140, "学员ID": 35, "年": 2026, "月": 6, "出勤课时": 5}, {"记录ID": 141, "学员ID": 36, "年": 2026, "月": 3, "出勤课时": 10.5}, {"记录ID": 142, "学员ID": 36, "年": 2026, "月": 4, "出勤课时": 9.5}, {"记录ID": 143, "学员ID": 36, "年": 2026, "月": 5, "出勤课时": 11.5}, {"记录ID": 144, "学员ID": 36, "年": 2026, "月": 6, "出勤课时": 5}, {"记录ID": 145, "学员ID": 37, "年": 2026, "月": 3, "出勤课时": 10.5}, {"记录ID": 146, "学员ID": 37, "年": 2026, "月": 4, "出勤课时": 8.5}, {"记录ID": 147, "学员ID": 37, "年": 2026, "月": 5, "出勤课时": 11.5}, {"记录ID": 148, "学员ID": 37, "年": 2026, "月": 6, "出勤课时": 5}, {"记录ID": 149, "学员ID": 38, "年": 2026, "月": 3, "出勤课时": 10.5}, {"记录ID": 150, "学员ID": 38, "年": 2026, "月": 4, "出勤课时": 9.5}, {"记录ID": 151, "学员ID": 38, "年": 2026, "月": 5, "出勤课时": 11.5}, {"记录ID": 152, "学员ID": 38, "年": 2026, "月": 6, "出勤课时": 5}, {"记录ID": 153, "学员ID": 39, "年": 2026, "月": 3, "出勤课时": 2.5}, {"记录ID": 154, "学员ID": 39, "年": 2026, "月": 4, "出勤课时": 9.5}, {"记录ID": 155, "学员ID": 39, "年": 2026, "月": 5, "出勤课时": 9}, {"记录ID": 156, "学员ID": 39, "年": 2026, "月": 6, "出勤课时": 5}, {"记录ID": 157, "学员ID": 40, "年": 2026, "月": 3, "出勤课时": 0}, {"记录ID": 158, "学员ID": 40, "年": 2026, "月": 4, "出勤课时": 6}, {"记录ID": 159, "学员ID": 40, "年": 2026, "月": 5, "出勤课时": 11.5}, {"记录ID": 160, "学员ID": 40, "年": 2026, "月": 6, "出勤课时": 5}, {"记录ID": 161, "学员ID": 41, "年": 2026, "月": 3, "出勤课时": 0}, {"记录ID": 162, "学员ID": 41, "年": 2026, "月": 4, "出勤课时": 6}, {"记录ID": 163, "学员ID": 41, "年": 2026, "月": 5, "出勤课时": 8.5}, {"记录ID": 164, "学员ID": 41, "年": 2026, "月": 6, "出勤课时": 5}, {"记录ID": 165, "学员ID": 42, "年": 2026, "月": 3, "出勤课时": 10}, {"记录ID": 166, "学员ID": 42, "年": 2026, "月": 4, "出勤课时": 9.5}, {"记录ID": 167, "学员ID": 42, "年": 2026, "月": 5, "出勤课时": 10}, {"记录ID": 168, "学员ID": 42, "年": 2026, "月": 6, "出勤课时": 5}, {"记录ID": 169, "学员ID": 43, "年": 2026, "月": 3, "出勤课时": 10}, {"记录ID": 170, "学员ID": 43, "年": 2026, "月": 4, "出勤课时": 9.5}, {"记录ID": 171, "学员ID": 43, "年": 2026, "月": 5, "出勤课时": 10}, {"记录ID": 172, "学员ID": 43, "年": 2026, "月": 6, "出勤课时": 5}, {"记录ID": 173, "学员ID": 44, "年": 2026, "月": 3, "出勤课时": 10}, {"记录ID": 174, "学员ID": 44, "年": 2026, "月": 4, "出勤课时": 9.5}, {"记录ID": 175, "学员ID": 44, "年": 2026, "月": 5, "出勤课时": 10}, {"记录ID": 176, "学员ID": 44, "年": 2026, "月": 6, "出勤课时": 5}, {"记录ID": 177, "学员ID": 45, "年": 2026, "月": 3, "出勤课时": 10}, {"记录ID": 178, "学员ID": 45, "年": 2026, "月": 4, "出勤课时": 9.5}, {"记录ID": 179, "学员ID": 45, "年": 2026, "月": 5, "出勤课时": 10}, {"记录ID": 180, "学员ID": 45, "年": 2026, "月": 6, "出勤课时": 5}, {"记录ID": 181, "学员ID": 46, "年": 2026, "月": 3, "出勤课时": 7.5}, {"记录ID": 182, "学员ID": 46, "年": 2026, "月": 4, "出勤课时": 9.5}, {"记录ID": 183, "学员ID": 46, "年": 2026, "月": 5, "出勤课时": 10}, {"记录ID": 184, "学员ID": 46, "年": 2026, "月": 6, "出勤课时": 5}, {"记录ID": 185, "学员ID": 47, "年": 2026, "月": 3, "出勤课时": 0}, {"记录ID": 186, "学员ID": 47, "年": 2026, "月": 4, "出勤课时": 0}, {"记录ID": 187, "学员ID": 47, "年": 2026, "月": 5, "出勤课时": 10}, {"记录ID": 188, "学员ID": 47, "年": 2026, "月": 6, "出勤课时": 5}, {"记录ID": 189, "学员ID": 48, "年": 2026, "月": 3, "出勤课时": 0}, {"记录ID": 190, "学员ID": 48, "年": 2026, "月": 4, "出勤课时": 0}, {"记录ID": 191, "学员ID": 48, "年": 2026, "月": 5, "出勤课时": 0}, {"记录ID": 192, "学员ID": 48, "年": 2026, "月": 6, "出勤课时": 0}, {"记录ID": 193, "学员ID": 49, "年": 2026, "月": 3, "出勤课时": 0}, {"记录ID": 194, "学员ID": 49, "年": 2026, "月": 4, "出勤课时": 0}, {"记录ID": 195, "学员ID": 49, "年": 2026, "月": 5, "出勤课时": 0}, {"记录ID": 196, "学员ID": 49, "年": 2026, "月": 6, "出勤课时": 0}, {"记录ID": 197, "学员ID": 1, "年": 2026, "月": 7, "出勤课时": 0}, {"记录ID": 198, "学员ID": 2, "年": 2026, "月": 7, "出勤课时": 0}, {"记录ID": 199, "学员ID": 3, "年": 2026, "月": 7, "出勤课时": 0}, {"记录ID": 200, "学员ID": 4, "年": 2026, "月": 7, "出勤课时": 0}, {"记录ID": 201, "学员ID": 5, "年": 2026, "月": 7, "出勤课时": 0}, {"记录ID": 202, "学员ID": 6, "年": 2026, "月": 7, "出勤课时": 0}, {"记录ID": 203, "学员ID": 7, "年": 2026, "月": 7, "出勤课时": 0}, {"记录ID": 204, "学员ID": 8, "年": 2026, "月": 7, "出勤课时": 0}, {"记录ID": 205, "学员ID": 50, "年": 2026, "月": 6, "出勤课时": 0}, {"记录ID": 206, "学员ID": 50, "年": 2026, "月": 5, "出勤课时": 0}]};
+
+function DB() {
+  if (!localStorage.getItem('edusys_classes')) {
+    localStorage.setItem('edusys_classes', JSON.stringify(SEED_DATA.classes));
+    localStorage.setItem('edusys_students', JSON.stringify(SEED_DATA.students));
+    localStorage.setItem('edusys_attendance', JSON.stringify(SEED_DATA.attendance));
+  }
+}
+
+function loadClasses() { return JSON.parse(localStorage.getItem('edusys_classes')||'[]'); }
+function saveClasses(data) { localStorage.setItem('edusys_classes', JSON.stringify(data)); autoSave(); }
+function loadStudents() { return JSON.parse(localStorage.getItem('edusys_students')||'[]'); }
+function saveStudents(data) { localStorage.setItem('edusys_students', JSON.stringify(data)); autoSave(); }
+function loadAttendance() { return JSON.parse(localStorage.getItem('edusys_attendance')||'[]'); }
+function saveAttendanceData(data) { localStorage.setItem('edusys_attendance', JSON.stringify(data)); autoSave(); }
+
+function autoSave() {
+  const now = new Date();
+  document.getElementById('lastSave').textContent = '已保存 ' + now.toLocaleTimeString();
+}
+
+// ═══════════════════════════════════════
+// 导出 / 导入 / 重置
+// ═══════════════════════════════════════
+function exportData() {
+  const data = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    classes: loadClasses(),
+    students: loadStudents(),
+    attendance: loadAttendance()
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'DK教务系统备份_' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('备份已下载！发送这个文件即可在其它设备恢复数据');
+}
+
+function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data.classes || !data.students || !data.attendance) {
+        showToast('备份文件格式不正确', false); return;
+      }
+      localStorage.setItem('edusys_classes', JSON.stringify(data.classes));
+      localStorage.setItem('edusys_students', JSON.stringify(data.students));
+      localStorage.setItem('edusys_attendance', JSON.stringify(data.attendance));
+      showToast('数据已恢复！共导入 ' + data.students.length + ' 名学员');
+      initApp();
+    } catch(ex) { showToast('导入失败：' + ex.message, false); }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function resetData() {
+  if (!confirm('确定恢复为初始数据？当前所有修改将丢失！')) return;
+  localStorage.setItem('edusys_classes', JSON.stringify(SEED_DATA.classes));
+  localStorage.setItem('edusys_students', JSON.stringify(SEED_DATA.students));
+  localStorage.setItem('edusys_attendance', JSON.stringify(SEED_DATA.attendance));
+  showToast('已恢复初始数据');
+  initApp();
+}
+
+// ═══════════════════════════════════════
+// 工具
+// ═══════════════════════════════════════
+function showLoading() { document.getElementById('loadingOverlay').classList.add('show'); }
+function hideLoading() { document.getElementById('loadingOverlay').classList.remove('show'); }
+function showToast(msg, ok=true) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast ' + (ok ? 'toast-ok' : 'toast-err') + ' show';
+  setTimeout(() => { t.classList.remove('show'); }, 3000);
+}
+
+// ═══════════════════════════════════════
+// Tab 切换
+// ═══════════════════════════════════════
+function switchTab(tab) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
+  const map = {classes:'sec-classes',students:'sec-students',attendance:'sec-attendance',stats:'sec-stats'};
+  const secId = map[tab];
+  if (secId) document.getElementById(secId).classList.add('active');
+  const btns = document.querySelectorAll('.tabs button');
+  const idx = {classes:0,students:1,attendance:2,stats:3};
+  if (idx[tab] !== undefined) btns[idx[tab]].classList.add('active');
+  if (tab==='classes') renderClasses();
+  if (tab==='students') { fillStuClassFilter(); renderStudents(); }
+  if (tab==='attendance') { fillAttClass(); renderAttendance(); }
+  if (tab==='stats') renderClassProgress();
+}
+
+// ═══════════════════════════════════════
+// Tab 1: 班级管理
+// ═══════════════════════════════════════
+function renderClasses() {
+  const classes = loadClasses();
+  const students = loadStudents();
+  const countMap = {};
+  students.forEach(s => { const cid = s['班级ID']; countMap[cid] = (countMap[cid]||0) + 1; });
+
+  let html = '';
+  classes.forEach(c => {
+    const cid = c['班级ID'];
+    const phase = c['阶段'] || '';
+    html += '<tr>' +
+      '<td style="text-align:left;font-weight:600">' + c['班级名称'] + ' <span class="tag tag-' + (phase||'k1').toLowerCase() + '">' + phase + '阶段</span></td>' +
+      '<td>' + phase + '</td>' +
+      '<td>' + c['排课频率(节/月)'] + ' 节/月</td>' +
+      '<td><b>' + c['阶段总课时'] + '</b></td>' +
+      '<td>' + (c['年前已上课时']||0) + '</td>' +
+      '<td>' + (countMap[cid]||0) + ' 人</td>' +
+      '<td><button class="btn btn-gray btn-xs" onclick="editClass(' + cid + ')">✏️</button> ' +
+      '<button class="btn btn-danger btn-xs" onclick="deleteClass(' + cid + ')">🗑</button></td></tr>';
+  });
+  document.getElementById('classTbody').innerHTML = html || '<tr><td colspan="7" style="color:#94a3b8;padding:30px">暂无班级数据</td></tr>';
+}
+
+function openClassModal(cid) {
+  document.getElementById('classEditId').value = cid || '';
+  document.getElementById('classModalTitle').textContent = cid ? '编辑班级' : '新增班级';
+  if (cid) {
+    const classes = loadClasses();
+    const c = classes.find(x => x['班级ID'] === cid);
+    if (c) {
+      document.getElementById('className').value = c['班级名称']||'';
+      document.getElementById('classPhase').value = c['阶段']||'K1';
+      document.getElementById('classFreq').value = c['排课频率(节/月)']||8;
+      document.getElementById('classTotal').value = c['阶段总课时']||88;
+      document.getElementById('classBefore').value = c['年前已上课时']||0;
+    }
+  } else {
+    document.getElementById('className').value = '';
+    document.getElementById('classPhase').value = 'K1';
+    document.getElementById('classFreq').value = 8;
+    document.getElementById('classTotal').value = 88;
+    document.getElementById('classBefore').value = 0;
+  }
+  document.getElementById('classModal').classList.add('show');
+}
+
+function closeClassModal() { document.getElementById('classModal').classList.remove('show'); }
+
+function saveClass() {
+  const editCid = document.getElementById('classEditId').value;
+  const classes = loadClasses();
+  const data = {
+    '班级名称': document.getElementById('className').value.trim(),
+    '阶段': document.getElementById('classPhase').value,
+    '排课频率(节/月)': parseInt(document.getElementById('classFreq').value) || 8,
+    '阶段总课时': parseInt(document.getElementById('classTotal').value) || 88,
+    '年前已上课时': parseInt(document.getElementById('classBefore').value) || 0,
+    '3月排课': 0, '4月排课': 0, '5月排课': 0, '6月排课': 0
+  };
+  if (!data['班级名称']) { showToast('请输入班级名称', false); return; }
+
+  if (editCid) {
+    const idx = classes.findIndex(c => c['班级ID'] === parseInt(editCid));
+    if (idx >= 0) { data['班级ID'] = classes[idx]['班级ID']; classes[idx] = data; }
+  } else {
+    const maxId = classes.length > 0 ? Math.max(...classes.map(c=>c['班级ID']||0)) : 0;
+    data['班级ID'] = maxId + 1;
+    classes.push(data);
+  }
+  saveClasses(classes);
+  closeClassModal();
+  renderClasses();
+  fillStuClassFilter();
+  fillAttClass();
+  showToast(editCid ? '班级已更新' : '班级已新增');
+}
+
+function editClass(cid) { openClassModal(cid); }
+
+function deleteClass(cid) {
+  if (!confirm('确定删除该班级？将同时删除该班所有学员和课时记录！')) return;
+  let classes = loadClasses();
+  let students = loadStudents();
+  let attendance = loadAttendance();
+
+  const stuIds = students.filter(s => s['班级ID'] === cid).map(s => s['学员ID']);
+  students = students.filter(s => s['班级ID'] !== cid);
+  attendance = attendance.filter(a => !stuIds.includes(a['学员ID']));
+  classes = classes.filter(c => c['班级ID'] !== cid);
+
+  saveClasses(classes);
+  saveStudents(students);
+  saveAttendanceData(attendance);
+  renderClasses();
+  fillStuClassFilter();
+  fillAttClass();
+  showToast('班级已删除');
+}
+
+// ═══════════════════════════════════════
+// Tab 2: 学员出勤
+// ═══════════════════════════════════════
+function fillStuClassFilter() {
+  const sel = document.getElementById('stuClassFilter');
+  const currentVal = sel.value;
+  sel.innerHTML = '<option value="all">全部班级</option>';
+  loadClasses().forEach(c => {
+    sel.innerHTML += '<option value="' + c['班级ID'] + '">' + c['班级名称'] + '</option>';
+  });
+  sel.value = currentVal;
+}
+
+function renderStudents() {
+  const clsFilter = document.getElementById('stuClassFilter').value;
+  const showGrad = document.getElementById('showGraduated').checked;
+  const classes = loadClasses();
+  const attendance = loadAttendance();
+  let students = loadStudents();
+  const clsMap = {};
+  classes.forEach(c => { clsMap[c['班级ID']] = c['班级名称']; });
+
+  // 动态识别月份
+  const monthSet = new Set();
+  attendance.forEach(r => { if (r['月']) monthSet.add(r['月']); });
+  const months = Array.from(monthSet).sort((a,b)=>a-b);
+
+  // 表头
+  let theadHtml = '<tr><th style="width:50px">拖拽</th><th style="text-align:left;width:100px">姓名</th><th style="width:120px">班级</th>';
+  months.forEach(m => { theadHtml += '<th style="width:80px">' + m + '月出勤</th>'; });
+  theadHtml += '<th style="width:80px">合计</th><th style="width:90px">缴费课时</th><th style="width:90px">剩余课时</th><th style="width:130px">操作</th></tr>';
+  document.getElementById('stuThead').innerHTML = theadHtml;
+
+  // 过滤
+  if (clsFilter !== 'all') students = students.filter(s => s['班级ID'] === parseInt(clsFilter));
+  if (!showGrad) students = students.filter(s => s['状态'] !== '毕业');
+
+  // 按班级分组
+  const grouped = {};
+  students.forEach(s => {
+    const cid = s['班级ID'];
+    if (!grouped[cid]) grouped[cid] = [];
+    grouped[cid].push(s);
+  });
+
+  const classOrder = classes.map(c => c['班级ID']);
+  const totalCols = 7 + months.length;
+  let html = '';
+
+  classOrder.forEach(cid => {
+    const stuList = grouped[cid];
+    if (!stuList || stuList.length===0) return;
+    const cname = clsMap[cid] || '';
+    const activeCount = stuList.filter(s => s['状态'] !== '毕业').length;
+    const gradCount = stuList.length - activeCount;
+    let title = cname + '（' + activeCount + '人';
+    if (gradCount > 0) title += '，毕业' + gradCount + '人';
+    title += '）';
+    html += '<tr class="cls-header"><td colspan="' + totalCols + '" style="text-align:left">' + title + '</td></tr>';
+
+    stuList.forEach(s => {
+      const sid = s['学员ID'];
+      const isGraduated = s['状态'] === '毕业';
+      const recs = attendance.filter(r => r['学员ID'] === sid);
+
+      const monthVals = {};
+      months.forEach(m => {
+        const rec = recs.find(r => r['月'] === m);
+        monthVals[m] = (rec && rec['出勤课时']) || 0;
+      });
+      const total = months.reduce((sum, m) => sum + monthVals[m], 0);
+      const remaining = Math.max(0, Math.round(((s['缴费课时数']||0) - total) * 10) / 10);
+      const isLowHours = !isGraduated && remaining < 15 && (s['缴费课时数']||0) > 0;
+
+      let rowClass = '';
+      if (isGraduated) rowClass = 'row-grad';
+      else if (isLowHours) rowClass = 'row-warn';
+
+      html += '<tr class="' + rowClass + '" draggable="true" ondragstart="dragStart(event,' + sid + ',' + cid + ')" ondragover="dragOver(event,' + sid + ',this)" ondrop="dropStudent(event,' + sid + ',' + cid + ')" ondragleave="dragLeave(event,this)">';
+      html += '<td style="padding:4px 6px;text-align:center;font-size:13px;user-select:none">☰<br><span class="drag-hint">拖拽</span></td>';
+
+      let nameHtml = s['姓名'];
+      if (isGraduated) nameHtml += '<span class="grad-tag">毕业</span>';
+      if (isLowHours) nameHtml += '<span class="badge-warn">续费</span>';
+      html += '<td style="text-align:left;font-weight:600">' + nameHtml + '</td>';
+      html += '<td>' + cname + '</td>';
+      months.forEach(m => { html += '<td>' + (monthVals[m]||0) + '</td>'; });
+      html += '<td><b>' + total + '</b></td><td><b>' + (s['缴费课时数']||0) + '</b></td>';
+      html += '<td><b style="color:' + (isLowHours?'#ea580c':'inherit') + '">' + remaining + '</b></td>';
+      html += '<td style="white-space:nowrap">';
+      html += '<button class="btn btn-gray btn-xs" onclick="editStudent(' + sid + ')">✏️</button>';
+      html += '<button class="btn btn-xs" style="background:' + (isGraduated?'#10b981':'#94a3b8') + ';color:#fff" onclick="toggleGraduate(' + sid + ')">' + (isGraduated?'↩复读':'🏁') + '</button>';
+      html += '<button class="btn btn-danger btn-xs" onclick="deleteStudent(' + sid + ')">🗑</button>';
+      html += '</td></tr>';
+    });
+  });
+
+  document.getElementById('stuTbody').innerHTML = html || '<tr><td colspan="' + totalCols + '" style="color:#94a3b8;padding:30px">暂无学员数据</td></tr>';
+}
+
+function openStudentModal(sid) {
+  document.getElementById('stuEditId').value = sid || '';
+  document.getElementById('stuModalTitle').textContent = sid ? '编辑学员' : '新增学员';
+
+  const sel = document.getElementById('stuClass');
+  sel.innerHTML = '';
+  loadClasses().forEach(c => { sel.innerHTML += '<option value="' + c['班级ID'] + '">' + c['班级名称'] + '</option>'; });
+
+  if (sid) {
+    const s = loadStudents().find(x => x['学员ID'] === sid);
+    if (s) {
+      document.getElementById('stuName').value = s['姓名']||'';
+      document.getElementById('stuClass').value = s['班级ID'];
+      document.getElementById('stuPaid').value = s['缴费课时数']||0;
+      document.getElementById('stuStatus').value = s['状态']||'在读';
+    }
+  } else {
+    document.getElementById('stuName').value = '';
+    document.getElementById('stuPaid').value = 0;
+    document.getElementById('stuStatus').value = '在读';
+  }
+  document.getElementById('stuModal').classList.add('show');
+}
+
+function closeStudentModal() { document.getElementById('stuModal').classList.remove('show'); }
+
+function saveStudent() {
+  const editSid = document.getElementById('stuEditId').value;
+  let students = loadStudents();
+  const data = {
+    '姓名': document.getElementById('stuName').value.trim(),
+    '班级ID': parseInt(document.getElementById('stuClass').value),
+    '缴费课时数': parseFloat(document.getElementById('stuPaid').value) || 0,
+    '状态': document.getElementById('stuStatus').value,
+    '排序': 0
+  };
+  if (!data['姓名']) { showToast('请输入学员姓名', false); return; }
+  if (!data['班级ID']) { showToast('请选择班级', false); return; }
+
+  if (editSid) {
+    const idx = students.findIndex(s => s['学员ID'] === parseInt(editSid));
+    if (idx >= 0) {
+      data['学员ID'] = students[idx]['学员ID'];
+      data['排序'] = students[idx]['排序'];
+      // 保留剩余课时（由出勤自动计算）
+      data['剩余课时数'] = students[idx]['剩余课时数'];
+      students[idx] = data;
+    }
+  } else {
+    const maxId = students.length > 0 ? Math.max(...students.map(s=>s['学员ID']||0)) : 0;
+    data['学员ID'] = maxId + 1;
+    data['剩余课时数'] = data['缴费课时数'];
+    students.push(data);
+  }
+  saveStudents(students);
+  closeStudentModal();
+  renderStudents();
+  showToast(editSid ? '学员已更新' : '学员已新增');
+}
+
+function editStudent(sid) { openStudentModal(sid); }
+
+function deleteStudent(sid) {
+  if (!confirm('确定删除该学员？将同时删除其课时记录！')) return;
+  let students = loadStudents();
+  let attendance = loadAttendance();
+  students = students.filter(s => s['学员ID'] !== sid);
+  attendance = attendance.filter(a => a['学员ID'] !== sid);
+  saveStudents(students);
+  saveAttendanceData(attendance);
+  renderStudents();
+  showToast('学员已删除');
+}
+
+// ── 拖拽排序 ──
+let draggedSid = null;
+let draggedClassId = null;
+
+function dragStart(event, sid, classId) {
+  draggedSid = sid;
+  draggedClassId = classId;
+  event.dataTransfer.effectAllowed = 'move';
+  event.dataTransfer.setData('text/plain', String(sid));
+  setTimeout(() => event.currentTarget.classList.add('dragging'), 0);
+}
+
+function dragOver(event, sid, rowEl) {
+  event.preventDefault();
+  event.dataTransfer.dropEffect = 'move';
+  rowEl.classList.remove('drag-over-top', 'drag-over-bottom');
+  const rect = rowEl.getBoundingClientRect();
+  if (event.clientY < rect.top + rect.height / 2) rowEl.classList.add('drag-over-top');
+  else rowEl.classList.add('drag-over-bottom');
+}
+
+function dragLeave(event, rowEl) {
+  rowEl.classList.remove('drag-over-top', 'drag-over-bottom');
+}
+
+function dropStudent(event, targetSid, targetClassId) {
+  event.preventDefault();
+  document.querySelectorAll('.drag-over-top,.drag-over-bottom,.dragging').forEach(el => {
+    el.classList.remove('drag-over-top', 'drag-over-bottom', 'dragging');
+  });
+  if (!draggedSid || draggedSid == targetSid) { draggedSid = null; return; }
+  if (draggedClassId != targetClassId) {
+    showToast('只能同班内拖拽排序', false);
+    draggedSid = null;
+    return;
+  }
+
+  let students = loadStudents();
+  const clsStudents = students.filter(s => s['班级ID'] === draggedClassId);
+  const srcIdx = clsStudents.findIndex(s => s['学员ID'] === draggedSid);
+  const tgtIdx = clsStudents.findIndex(s => s['学员ID'] === targetSid);
+  if (srcIdx < 0 || tgtIdx < 0) return;
+
+  const src = clsStudents.splice(srcIdx, 1)[0];
+  clsStudents.splice(tgtIdx, 0, src);
+
+  clsStudents.forEach((s, i) => { s['排序'] = i; });
+  saveStudents(students);
+  renderStudents();
+  showToast('排序已更新');
+  draggedSid = null; draggedClassId = null;
+}
+
+// ── 切换毕业/在读 ──
+function toggleGraduate(sid) {
+  let students = loadStudents();
+  const s = students.find(x => x['学员ID'] === sid);
+  if (!s) return;
+  s['状态'] = s['状态'] === '毕业' ? '在读' : '毕业';
+  saveStudents(students);
+  renderStudents();
+  showToast(s['状态'] === '毕业' ? '已标记为毕业' : '已恢复为在读');
+}
+
+// ═══════════════════════════════════════
+// Tab 3: 课时登记
+// ═══════════════════════════════════════
+let attChanges = {};
+
+function fillAttClass() {
+  const sel = document.getElementById('attClass');
+  const currentVal = sel.value;
+  sel.innerHTML = '<option value="">请选择班级</option>';
+  loadClasses().forEach(c => {
+    sel.innerHTML += '<option value="' + c['班级ID'] + '">' + c['班级名称'] + '</option>';
+  });
+  sel.value = currentVal;
+}
+
+function renderAttendance() {
+  const clsId = parseInt(document.getElementById('attClass').value);
+  const year = parseInt(document.getElementById('attYear').value);
+  const month = parseInt(document.getElementById('attMonth').value);
+
+  if (!clsId) {
+    document.getElementById('attTbody').innerHTML = '<tr><td colspan="2" style="color:#94a3b8;padding:30px">请先选择班级</td></tr>';
+    document.getElementById('attInfo').textContent = '';
+    return;
+  }
+
+  const students = loadStudents().filter(s => s['班级ID'] === clsId && s['状态'] !== '毕业').sort((a,b)=>(a['排序']||0)-(b['排序']||0));
+  const attendance = loadAttendance();
+  const recMap = {};
+  attendance.filter(r => r['年'] === year && r['月'] === month).forEach(r => { recMap[r['学员ID']] = r; });
+
+  const classes = loadClasses();
+  const clsInfo = classes.find(c => c['班级ID'] === clsId);
+  const freq = (clsInfo && clsInfo['排课频率(节/月)']) || 8;
+  document.getElementById('attInfo').textContent = '全勤标准：' + freq + ' 节/月';
+
+  attChanges = {};
+  let html = '';
+  students.forEach(s => {
+    const sid = s['学员ID'];
+    const existing = recMap[sid];
+    const currentHours = (existing && existing['出勤课时']) || 0;
+    html += '<tr><td style="text-align:left;font-weight:600">' + s['姓名'] + '</td>';
+    html += '<td><input type="number" step="0.5" min="0" value="' + currentHours + '" data-sid="' + sid + '" data-orig="' + currentHours + '" onchange="onAttChange(this)" onfocus="this.select()"></td></tr>';
+  });
+  document.getElementById('attTbody').innerHTML = html || '<tr><td colspan="2" style="color:#94a3b8;padding:30px">该班暂无学员</td></tr>';
+}
+
+function onAttChange(input) {
+  const sid = parseInt(input.dataset.sid);
+  const orig = parseFloat(input.dataset.orig)||0;
+  const val = parseFloat(input.value)||0;
+  if (val !== orig) { attChanges[sid] = val; input.classList.add('changed'); }
+  else { delete attChanges[sid]; input.classList.remove('changed'); }
+}
+
+function markAllPresent() {
+  const clsId = parseInt(document.getElementById('attClass').value);
+  const classes = loadClasses();
+  const freqItem = classes.find(c => c['班级ID'] === clsId);
+  const freq = (freqItem && freqItem['排课频率(节/月)']) || 8;
+
+  document.querySelectorAll('#attTbody input').forEach(inp => {
+    const sid = parseInt(inp.dataset.sid);
+    const orig = parseFloat(inp.dataset.orig)||0;
+    inp.value = freq;
+    if (freq !== orig) { attChanges[sid] = freq; inp.classList.add('changed'); }
+    else { delete attChanges[sid]; inp.classList.remove('changed'); }
+  });
+  showToast('已标记全勤（' + freq + ' 节）');
+}
+
+function saveAttendance() {
+  const clsId = parseInt(document.getElementById('attClass').value);
+  const year = parseInt(document.getElementById('attYear').value);
+  const month = parseInt(document.getElementById('attMonth').value);
+  if (!clsId) { showToast('请选择班级', false); return; }
+
+  const inputs = document.querySelectorAll('#attTbody input');
+  if (inputs.length === 0) { showToast('该班暂无学员', false); return; }
+
+  let attendance = loadAttendance();
+
+  inputs.forEach(inp => {
+    const sid = parseInt(inp.dataset.sid);
+    const hours = parseFloat(inp.value)||0;
+    const existing = attendance.find(r => r['学员ID'] === sid && r['年'] === year && r['月'] === month);
+
+    if (existing) {
+      existing['出勤课时'] = hours;
+    } else {
+      const maxId = attendance.length > 0 ? Math.max(...attendance.map(a=>a['记录ID']||0)) : 0;
+      attendance.push({ '记录ID': maxId + 1, '学员ID': sid, '年': year, '月': month, '出勤课时': hours });
+    }
+  });
+
+  saveAttendanceData(attendance);
+  showToast('已保存 ' + inputs.length + ' 条课时记录');
+  attChanges = {};
+  renderAttendance();
+}
+
+// ═══════════════════════════════════════
+// Tab 4: 班级排课
+// ═══════════════════════════════════════
+function renderClassProgress() {
+  const classes = loadClasses();
+  const students = loadStudents();
+  const attendance = loadAttendance();
+
+  const result = classes.map(c => {
+    const clsStudents = students.filter(s => s['班级ID'] === c['班级ID'] && s['状态'] !== '毕业');
+    const stuIds = new Set(clsStudents.map(s => s['学员ID']));
+
+    const months = [];
+    for (let m = 3; m <= 6; m++) {
+      const monthRecs = attendance.filter(r => r['年'] === 2026 && r['月'] === m && stuIds.has(r['学员ID']));
+      const hoursList = monthRecs.map(r => r['出勤课时']).filter(h => h > 0);
+      months.push(hoursList.length > 0 ? Math.max(...hoursList) : 0);
+    }
+    const before = c['年前已上课时'] || 0;
+    const totalDone = Math.round((before + months.reduce((a,b)=>a+b, 0)) * 10) / 10;
+    const totalPlan = c['阶段总课时'] || 0;
+    const pct = totalPlan > 0 ? Math.round(totalDone / totalPlan * 1000) / 10 : 0;
+    let status = '未开始';
+    if (pct >= 80) status = '接近完成';
+    else if (pct >= 50) status = '进行中';
+    else if (totalDone > 0) status = '刚起步';
+
+    return { cid: c['班级ID'], name: c['班级名称'], before, months, totalDone, totalPlan, pct, status };
+  });
+
+  const pbar = (pct) => {
+    const color = pct>=80?'#059669':pct>=50?'#d97706':'#dc2626';
+    return '<span class="pbar"><span class="pfill" style="width:' + pct + '%;background:' + color + '"></span></span>';
+  };
+
+  let html = '';
+  result.forEach(c => {
+    const pct = c.pct || 0;
+    const color = pct>=80?'#059669':pct>=50?'#d97706':'#dc2626';
+    const mons = c.months || [];
+    html += '<tr data-cls-id="' + c.cid + '">';
+    html += '<td style="text-align:left;font-weight:600">' + c.name + '</td>';
+    html += '<td>' + c.before + '</td>';
+    html += '<td><input type="number" class="ipt-progress" data-cid="' + c.cid + '" data-field="m3" value="' + (mons[0]||0) + '" min="0" style="width:56px;text-align:center"></td>';
+    html += '<td><input type="number" class="ipt-progress" data-cid="' + c.cid + '" data-field="m4" value="' + (mons[1]||0) + '" min="0" style="width:56px;text-align:center"></td>';
+    html += '<td><input type="number" class="ipt-progress" data-cid="' + c.cid + '" data-field="m5" value="' + (mons[2]||0) + '" min="0" style="width:56px;text-align:center"></td>';
+    html += '<td><input type="number" class="ipt-progress" data-cid="' + c.cid + '" data-field="m6" value="' + (mons[3]||0) + '" min="0" style="width:56px;text-align:center"></td>';
+    html += '<td><b class="td-total">' + c.totalDone + '</b></td>';
+    html += '<td><b>' + c.totalPlan + '</b></td>';
+    html += '<td style="font-weight:700;color:' + color + '">' + pct + '%<br>' + pbar(pct) + '</td>';
+    html += '<td style="color:' + color + ';font-weight:600">' + c.status + '</td>';
+    html += '</tr>';
+  });
+
+  // 合计行
+  const sumB = result.reduce((a,c)=>a+(c.before||0), 0);
+  const sumD = Math.round(result.reduce((a,c)=>a+(c.totalDone||0), 0) * 10) / 10;
+  const sumM = [0,0,0,0];
+  result.forEach(c => (c.months||[]).forEach((v,i)=>{sumM[i] += v||0}));
+  html += '<tr style="background:#f1f5f9;font-weight:700"><td style="text-align:left">合 计</td><td>' + sumB + '</td>';
+  sumM.forEach(v => { html += '<td>' + (Math.round(v*10)/10) + '</td>'; });
+  html += '<td>' + sumD + '</td><td>—</td><td>—</td><td>—</td></tr>';
+
+  document.getElementById('statsTbody').innerHTML = html;
+
+  // 实时计算
+  document.querySelectorAll('.ipt-progress').forEach(inp => {
+    inp.addEventListener('input', () => {
+      const row = inp.closest('tr');
+      const before = parseFloat(row.cells[1].textContent) || 0;
+      let total = before;
+      for (let m = 3; m <= 6; m++) {
+        const input = row.querySelector('[data-field="m' + m + '"]');
+        total += parseFloat(input?.value) || 0;
+      }
+      row.querySelector('.td-total').textContent = Math.round(total * 10) / 10;
+    });
+  });
+}
+
+function saveClassProgress() {
+  const rows = document.querySelectorAll('#statsTbody tr[data-cls-id]');
+  if (rows.length === 0) { showToast('没有可保存的数据', false); return; }
+
+  let classes = loadClasses();
+  let saved = 0;
+  rows.forEach(row => {
+    const cid = parseInt(row.dataset.clsId);
+    const c = classes.find(x => x['班级ID'] === cid);
+    if (!c) return;
+
+    c['3月排课'] = parseFloat(row.querySelector('[data-field="m3"]')?.value) || 0;
+    c['4月排课'] = parseFloat(row.querySelector('[data-field="m4"]')?.value) || 0;
+    c['5月排课'] = parseFloat(row.querySelector('[data-field="m5"]')?.value) || 0;
+    c['6月排课'] = parseFloat(row.querySelector('[data-field="m6"]')?.value) || 0;
+    saved++;
+  });
+  saveClasses(classes);
+  showToast('已保存 ' + saved + ' 个班级的排课数据');
+  renderClassProgress();
+}
+
+// ═══════════════════════════════════════
+// 初始化
+// ═══════════════════════════════════════
+function initApp() {
+  DB();
+  fillStuClassFilter();
+  fillAttClass();
+  renderClasses();
+  autoSave();
+}
+
+// 启动
+DB();
+fillStuClassFilter();
+fillAttClass();
+renderClasses();
+autoSave();
+</script>
+</body>
+</html>
