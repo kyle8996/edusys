@@ -40,7 +40,9 @@ tbody tr:hover{background:#f8fafc}
 .modal .form-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:20px}
 .att-form{display:flex;gap:12px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
 .att-table-wrap{max-height:60vh;overflow-y:auto}
-.att-table-wrap td input{width:60px;padding:4px 6px;border:1px solid #cbd5e1;border-radius:6px;text-align:center;font-size:13px}
+.att-table-wrap td input{width:50px;padding:4px 4px;border:1px solid #cbd5e1;border-radius:6px;text-align:center;font-size:12px}
+.att-table-wrap .att-total{font-weight:700;color:#2563eb;background:#f0f7ff}
+.att-month-hd{background:#f1f5f9;font-size:11px;color:#64748b}
 .att-table-wrap td input.changed{background:#fef3c7;border-color:#f59e0b}
 .pbar{height:6px;background:#e2e8f0;border-radius:3px;overflow:hidden;width:60px;display:inline-block;vertical-align:middle;margin-top:3px}
 .pfill{height:100%;border-radius:3px}
@@ -160,16 +162,16 @@ tr.drag-over-bottom td{box-shadow:inset 0 -3px 0 0 #3b82f6}
     <div class="att-form">
       <label>班级：<select id="attClass" onchange="renderAttendance()"><option value="">请选择班级</option></select></label>
       <label>年：<input type="number" id="attYear" value="2026" min="2020" max="2030" style="width:70px" onchange="renderAttendance()"></label>
-      <label>月：<select id="attMonth" onchange="renderAttendance()">
-        <option value="3">3月</option><option value="4">4月</option><option value="5">5月</option><option value="6" selected>6月</option>
-        <option value="7">7月</option><option value="8">8月</option><option value="9">9月</option><option value="10">10月</option><option value="11">11月</option><option value="12">12月</option>
-      </select></label>
       <button class="btn btn-success" onclick="markAllPresent()">一键全勤</button>
       <button class="btn btn-primary" onclick="saveAttendance()">保存登记</button>
       <span style="font-size:12px;color:#94a3b8;margin-left:8px" id="attInfo"></span>
     </div>
     <div class="att-table-wrap"><table><thead><tr>
-      <th style="text-align:left;width:100px">学员姓名</th><th style="width:120px">出勤课时</th>
+      <th style="text-align:left;width:90px">学员姓名</th>
+      <th class="att-month-hd">1月</th><th class="att-month-hd">2月</th><th class="att-month-hd">3月</th><th class="att-month-hd">4月</th>
+      <th class="att-month-hd">5月</th><th class="att-month-hd">6月</th><th class="att-month-hd">7月</th><th class="att-month-hd">8月</th>
+      <th class="att-month-hd">9月</th><th class="att-month-hd">10月</th><th class="att-month-hd">11月</th><th class="att-month-hd">12月</th>
+      <th style="width:55px;font-weight:700;color:#2563eb">合计</th>
     </tr></thead><tbody id="attTbody"></tbody></table></div>
   </div>
 </div>
@@ -611,55 +613,80 @@ function fillAttClass() {
 async function renderAttendance() {
   const cid = parseInt(document.getElementById('attClass').value);
   const year = parseInt(document.getElementById('attYear').value);
-  const month = parseInt(document.getElementById('attMonth').value);
   if (!cid) { document.getElementById('attTbody').innerHTML = ''; document.getElementById('attInfo').textContent = ''; return; }
-  
+
   const classStudents = _students.filter(s => s.class_id === cid && s.status !== '毕业');
   const freq = _classes.find(c => c.id === cid)?.freq || 8;
   document.getElementById('attInfo').textContent = classStudents.length + ' 名学员 · 排课' + freq + '节/月';
-  
+
   let html = '';
   classStudents.forEach(s => {
-    const rec = _attendance.find(a => a.student_id === s.id && a.year === year && a.month === month);
-    const hours = rec ? (rec.hours || 0) : 0;
-    html += '<tr>' +
-      '<td style="text-align:left;font-weight:500">' + s.name + '</td>' +
-      '<td><input type="number" step="0.5" min="0" value="' + hours + '" data-sid="' + s.id + '" class="att-input"></td>' +
-      '</tr>';
+    html += '<tr><td style="text-align:left;font-weight:500">' + s.name + '</td>';
+    let rowTotal = 0;
+    for (let m = 1; m <= 12; m++) {
+      const rec = _attendance.find(a => a.student_id === s.id && a.year === year && a.month === m);
+      const hours = rec ? (rec.hours || 0) : 0;
+      rowTotal += hours;
+      // 高亮当前教学月份(3-6月)
+      const isTeachingMonth = m >= 3 && m <= 6;
+      html += '<td><input type="number" step="0.5" min="0" value="' + hours + '" data-sid="' + s.id + '" data-month="' + m + '" class="att-input"' + (isTeachingMonth ? '' : ' style="color:#94a3b8"') + '></td>';
+    }
+    html += '<td class="att-total">' + rowTotal.toFixed(1) + '</td></tr>';
   });
-  document.getElementById('attTbody').innerHTML = html || '<tr><td colspan="2" style="color:#94a3b8;padding:20px">该班级暂无在读学员</td></tr>';
+  document.getElementById('attTbody').innerHTML = html || '<tr><td colspan="14" style="color:#94a3b8;padding:20px">该班级暂无在读学员</td></tr>';
+
+  // 监听输入变化，实时更新合计
+  document.querySelectorAll('.att-input').forEach(inp => {
+    inp.addEventListener('input', updateRowTotals);
+  });
+}
+
+function updateRowTotals() {
+  document.querySelectorAll('#attTbody tr').forEach(tr => {
+    const inputs = tr.querySelectorAll('.att-input');
+    const totalCell = tr.querySelector('.att-total');
+    if (!totalCell) return;
+    let sum = 0;
+    inputs.forEach(inp => { sum += parseFloat(inp.value) || 0; });
+    totalCell.textContent = sum.toFixed(1);
+  });
 }
 
 function markAllPresent() {
   const cid = parseInt(document.getElementById('attClass').value);
   if (!cid) return;
   const freq = _classes.find(c => c.id === cid)?.freq || 8;
-  document.querySelectorAll('.att-input').forEach(inp => { inp.value = freq; inp.classList.add('changed'); });
+  // 只填教学月份(3-6月)为全勤
+  document.querySelectorAll('.att-input').forEach(inp => {
+    const m = parseInt(inp.dataset.month);
+    if (m >= 3 && m <= 6) { inp.value = freq; inp.classList.add('changed'); }
+  });
+  updateRowTotals();
 }
 
 async function saveAttendance() {
   const cid = parseInt(document.getElementById('attClass').value);
   const year = parseInt(document.getElementById('attYear').value);
-  const month = parseInt(document.getElementById('attMonth').value);
   if (!cid) { showToast('请选择班级', false); return; }
-  
+
   const inputs = document.querySelectorAll('.att-input');
   const records = [];
   inputs.forEach(inp => {
     const sid = parseInt(inp.dataset.sid);
+    const month = parseInt(inp.dataset.month);
     const hours = parseFloat(inp.value) || 0;
     records.push({ student_id: sid, year: year, month: month, hours: hours });
   });
-  
+
   if (records.length === 0) { showToast('没有可保存的记录', false); return; }
-  
-  // 修复 Bug #4: 批量 upsert，避免部分成功/部分失败导致数据不一致
+
+  // 批量 upsert 全年数据
   const { error } = await sb.from('attendance').upsert(records, { onConflict: 'student_id,year,month' });
   if (error) { showToast('保存失败: '+error.message, false); return; }
-  
+
   await loadAll();
   renderAttendance();
-  showToast('已保存 ' + records.length + ' 条记录');
+  showToast('已保存 ' + (records.length / 12) + ' 名学员 × 12个月');
 }
 
 // ═══════════════════════════════════════
