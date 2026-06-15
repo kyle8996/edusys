@@ -354,7 +354,14 @@ async function editClass(cid) {
 
 async function deleteClass(cid) {
   const name = getClassName(cid);
-  if (!confirm('确定删除班级 "' + name + '"？\n该班级下的学员将变为"无班级"状态。')) return;
+  const studentCount = _students.filter(s => s.class_id === cid).length;
+  let msg = '确定删除班级 "' + name + '"？';
+  if (studentCount > 0) {
+    msg += '\n\n⚠️ 该班级下有 ' + studentCount + ' 名学员。';
+    msg += '\n学员与课时记录将保留（学员变为「无班级」）。';
+  }
+  if (!confirm(msg)) return;
+  // 先解除学员关联，避免外键冲突
   await sb.from('students').update({class_id: null}).eq('class_id', cid);
   const { error } = await sb.from('classes').delete().eq('id', cid);
   if (error) { showToast('删除失败: '+error.message, false); return; }
@@ -475,19 +482,21 @@ async function saveStudent() {
   const name = document.getElementById('stuName').value.trim();
   if (!name) { showToast('请输入学员姓名', false); return; }
   const classId = parseInt(document.getElementById('stuClass').value) || null;
+  const editId = document.getElementById('stuEditId').value;
   const data = {
     name: name,
     class_id: classId,
     paid_hours: parseFloat(document.getElementById('stuPaid').value) || 0,
-    status: document.getElementById('stuStatus').value,
-    remaining_hours: parseFloat(document.getElementById('stuPaid').value) || 0
+    status: document.getElementById('stuStatus').value
   };
-  const editId = document.getElementById('stuEditId').value;
   if (editId) {
+    // 修复 Bug #1: 编辑时不覆写 remaining_hours，由 calcRemaining() 动态计算
     const { error } = await sb.from('students').update(data).eq('id', parseInt(editId));
     if (error) { showToast('更新失败: '+error.message, false); return; }
     showToast('学员已更新');
   } else {
+    // 新增学员：remaining_hours 初始值 = paid_hours（尚无出勤消耗）
+    data.remaining_hours = data.paid_hours;
     const maxId = _students.reduce((m, s) => Math.max(m, s.id), 0);
     data.id = maxId + 1;
     data.sort_order = 0;
@@ -610,20 +619,22 @@ async function saveAttendance() {
   if (!cid) { showToast('请选择班级', false); return; }
   
   const inputs = document.querySelectorAll('.att-input');
-  let count = 0;
-  for (const inp of inputs) {
+  const records = [];
+  inputs.forEach(inp => {
     const sid = parseInt(inp.dataset.sid);
     const hours = parseFloat(inp.value) || 0;
-    const { error } = await sb.from('attendance').upsert({
-      student_id: sid, year: year, month: month, hours: hours
-    }, { onConflict: 'student_id,year,month' });
-    if (error) { showToast('保存失败: '+error.message, false); return; }
-    count++;
-  }
+    records.push({ student_id: sid, year: year, month: month, hours: hours });
+  });
+  
+  if (records.length === 0) { showToast('没有可保存的记录', false); return; }
+  
+  // 修复 Bug #4: 批量 upsert，避免部分成功/部分失败导致数据不一致
+  const { error } = await sb.from('attendance').upsert(records, { onConflict: 'student_id,year,month' });
+  if (error) { showToast('保存失败: '+error.message, false); return; }
   
   await loadAll();
   renderAttendance();
-  showToast('已保存 ' + count + ' 条记录');
+  showToast('已保存 ' + records.length + ' 条记录');
 }
 
 // ═══════════════════════════════════════
