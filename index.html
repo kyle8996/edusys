@@ -412,7 +412,7 @@ let _sessionRowIdx = 0;
 function addSchSessionRow(day, start, end) {
   const container = document.getElementById('schSessionList');
   const idx = _sessionRowIdx++;
-  const dayOpts = ['周日','周一','周二','周三','周四','周五','周六'].map((n,i) =>
+  const dayOpts = ['周一','周二','周三','周四','周五','周六','周日'].map((n,i) =>
     '<option value="' + i + '"' + (day===i?' selected':'') + '>' + n + '</option>'
   ).join('');
   const div = document.createElement('div');
@@ -474,7 +474,7 @@ async function saveClass() {
         capacity: schData.capacity, sessions: schData.sessions,
         statusOverride: schData.openDate ? undefined : '未开课'
       });
-      try { localStorage.setItem('edusys_schedule', JSON.stringify(SCHEDULE_DATA)); } catch(e){}
+      try { localStorage.setItem('edusys_schedule', JSON.stringify(SCHEDULE_DATA)); localStorage.setItem('edusys_schedule_ver', String(SCHEDULE_VERSION)); } catch(e){}
     }
     showToast('班级已更新');
   } else {
@@ -1060,25 +1060,25 @@ function exportStats() {
 // 排课数据（根据实际排课表配置）
 const SCHEDULE_DATA = [
   {classId:1, name:'K1001', phase:'K1', teacher:'Dora',
-   sessions:[{day:2,period:'eve',start:'18:00',end:'19:00'},{day:5,period:'pm',start:'15:00',end:'16:30'}],
+   sessions:[{day:1,period:'eve',start:'18:00',end:'19:00'},{day:4,period:'pm',start:'15:00',end:'16:30'}],
    openDate:'2026-03-18', capacity:8},
   {classId:2, name:'K1002', phase:'K1', teacher:'Dora',
-   sessions:[{day:3,period:'pm',start:'16:45',end:'17:45'},{day:5,period:'pm',start:'16:40',end:'18:10'}],
+   sessions:[{day:2,period:'pm',start:'16:45',end:'17:45'},{day:4,period:'pm',start:'16:40',end:'18:10'}],
    openDate:'2026-03-20', capacity:8},
   {classId:3, name:'K1003', phase:'K1', teacher:'Dora',
-   sessions:[{day:6,period:'pm',start:'15:35',end:'17:05'}],
+   sessions:[{day:5,period:'pm',start:'15:35',end:'17:05'}],
    openDate:'2026-01-21', capacity:8},
   {classId:7, name:'K1004', phase:'K1', teacher:'Dora',
-   sessions:[{day:0,period:'eve',start:'18:00',end:'19:00'},{day:6,period:'pm',start:'14:00',end:'15:30'}],
+   sessions:[{day:6,period:'eve',start:'18:00',end:'19:00'},{day:5,period:'pm',start:'14:00',end:'15:30'}],
    openDate:'', capacity:8, statusOverride:'未开课'},
   {classId:4, name:'K2001', phase:'K2', teacher:'Dora',
-   sessions:[{day:3,period:'eve',start:'19:00',end:'20:30'},{day:5,period:'eve',start:'19:00',end:'20:30'}],
+   sessions:[{day:2,period:'eve',start:'19:00',end:'20:30'},{day:4,period:'eve',start:'19:00',end:'20:30'}],
    openDate:'2026-04-02', capacity:10},
   {classId:5, name:'S1001', phase:'S', teacher:'Dora',
-   sessions:[{day:2,period:'eve',start:'19:00',end:'20:30'},{day:6,period:'am',start:'10:30',end:'12:00'}],
+   sessions:[{day:1,period:'eve',start:'19:00',end:'20:30'},{day:5,period:'am',start:'10:30',end:'12:00'}],
    openDate:'2026-03-12', capacity:10},
   {classId:6, name:'S3001', phase:'S', teacher:'Dora',
-   sessions:[{day:3,period:'eve',start:'18:00',end:'19:00'},{day:5,period:'am',start:'10:45',end:'12:15'}],
+   sessions:[{day:2,period:'eve',start:'18:00',end:'19:00'},{day:4,period:'am',start:'10:45',end:'12:15'}],
    openDate:'2026-04-09', capacity:10}
 ];
 
@@ -1231,24 +1231,35 @@ function initApp() {
 const LOGIN_PWD = 'DK0308';
 
 // 加载用户自定义排课数据（localStorage 持久化）
+// SCHEDULE_VERSION 2 = day 约定 0=周一（旧版 1 = 0=周日，需迁移）
+const SCHEDULE_VERSION = 2;
 (function() {
   try {
+    const savedVer = localStorage.getItem('edusys_schedule_ver') || '1';
     const saved = localStorage.getItem('edusys_schedule');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      // 合并策略：保留原始硬编码数据 + 追加用户新增的
-      const baseIds = [1,2,3,7,4,5,6]; // 原始 classId
-      const userEntries = parsed.filter(s => !baseIds.includes(s.classId));
-      // 更新已有条目的排课信息（teacher/sessions/openDate/capacity）
-      parsed.forEach(p => {
-        const existing = SCHEDULE_DATA.find(s => s.classId === p.classId);
-        if (existing) {
-          Object.assign(existing, { teacher: p.teacher, sessions: p.sessions, openDate: p.openDate, capacity: p.capacity, statusOverride: p.statusOverride });
-        }
+    if (!saved) return;
+    let parsed = JSON.parse(saved);
+    // 旧版数据迁移：day 0=周日 → 0=周一
+    if (savedVer !== String(SCHEDULE_VERSION)) {
+      const oldToNew = {0:6, 1:0, 2:1, 3:2, 4:3, 5:4, 6:5};
+      parsed.forEach(s => {
+        (s.sessions||[]).forEach(sess => { if (oldToNew[sess.day] !== undefined) sess.day = oldToNew[sess.day]; });
       });
-      // 追加全新条目
-      userEntries.forEach(u => { if (!SCHEDULE_DATA.find(s => s.classId === u.classId)) SCHEDULE_DATA.push(u); });
+      localStorage.setItem('edusys_schedule', JSON.stringify(parsed));
+      localStorage.setItem('edusys_schedule_ver', String(SCHEDULE_VERSION));
     }
+    // 合并策略：保留原始硬编码数据 + 追加用户新增的
+    const baseIds = [1,2,3,7,4,5,6]; // 原始 classId
+    const userEntries = parsed.filter(s => !baseIds.includes(s.classId));
+    // 更新已有条目的排课信息（teacher/sessions/openDate/capacity）
+    parsed.forEach(p => {
+      const existing = SCHEDULE_DATA.find(s => s.classId === p.classId);
+      if (existing) {
+        Object.assign(existing, { teacher: p.teacher, sessions: p.sessions, openDate: p.openDate, capacity: p.capacity, statusOverride: p.statusOverride });
+      }
+    });
+    // 追加全新条目
+    userEntries.forEach(u => { if (!SCHEDULE_DATA.find(s => s.classId === u.classId)) SCHEDULE_DATA.push(u); });
   } catch(e) {}
 })();
 
