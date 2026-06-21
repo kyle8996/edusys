@@ -997,7 +997,7 @@ const SCHEDULE_DATA = [
    openDate:'2026-04-09', capacity:10}
 ];
 
-let schWeekOffset = 0;
+let _schWeekOffset = 0;
 const DAY_NAMES = ['周日','周一','周二','周三','周四','周五','周六'];
 const PERIODS = [{key:'am',label:'上午'},{key:'pm',label:'下午'},{key:'eve',label:'晚上'}];
 
@@ -1012,7 +1012,7 @@ function getSchWeekStart(offset) {
 }
 
 function renderSchedule() {
-  const ws = getSchWeekStart(schWeekOffset);
+  const ws = getSchWeekStart(_schWeekOffset);
   // 更新周范围显示
   const we = new Date(ws); we.setDate(we.getDate() + 6);
   document.getElementById('schWeekRange').textContent =
@@ -1121,14 +1121,14 @@ function showSchTip(el) { /* CSS hover already handles this */ }
 function hideSchTip(el) { /* CSS handles */ }
 
 function schWeekOffset(delta) {
-  schWeekOffset += delta;
+  _schWeekOffset += delta;
   renderSchedule();
 }
 
 function exportSchedule() {
   const headers = ['班级','阶段','星期','时段','开始时间','结束时间','开课日期','学员数','剩余名额','状态'];
   const rows = [];
-  const ws = getSchWeekStart(schWeekOffset);
+  const ws = getSchWeekStart(_schWeekOffset);
   SCHEDULE_DATA.forEach(sch => {
     const cls = _classes.find(c => c.id === sch.classId);
     const studs = _students.filter(s => s.class_id === sch.classId && s.status !== '毕业');
