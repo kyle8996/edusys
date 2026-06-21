@@ -85,20 +85,15 @@ tr.drag-over-bottom td{box-shadow:inset 0 -3px 0 0 #3b82f6}
 /* ═══ 课程表预览 ═══ */
 .sch-grid{border-collapse:collapse;width:100%;table-layout:fixed}
 .sch-grid th,.sch-grid td{border:1px solid #e2e8f0;padding:0;vertical-align:top}
-.sch-grid thead th{background:#f8fafc;padding:8px 4px;font-size:11px;color:#475569;font-weight:600;text-align:center;position:sticky;top:0;z-index:2}
-.sch-grid thead th.day-hd{font-size:12px;background:#f1f5f9;color:#1e293b}
-.sch-grid thead th.sub-hd{width:60px;font-size:10px;background:#f8fafc;color:#64748b;width:58px}
-.sch-grid .phase-row td{background:#f0f9ff;border-top:2px solid #93c5fd}
-.sch-grid .phase-label{padding:8px 12px!important;font-weight:700;font-size:13px;color:#1e40af;white-space:nowrap;text-align:left!important}
-.sch-grid .cls-label{padding:7px 8px!important;font-weight:600;font-size:12px;color:#334155;text-align:left!important;white-space:nowrap;background:#fff}
-.sch-cell{min-height:48px;position:relative;padding:2px!important}
-.sch-block{display:block;padding:4px 6px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;transition:.15s;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sch-grid thead th{background:#f8fafc;padding:10px 6px;font-size:12px;color:#475569;font-weight:600;text-align:center;position:sticky;top:0;z-index:2}
+.sch-grid thead th.day-hd{font-size:13px;background:#f1f5f9;color:#1e293b}
+.sch-grid .teacher-label{padding:12px 14px!important;font-weight:700;font-size:14px;color:#1e40af;text-align:center!important;background:#eff6ff;border-bottom:2px solid #bfdbfe}
+.sch-cell{min-height:52px;position:relative;padding:4px 3px!important;display:flex;flex-direction:column;gap:3px}
+.sch-block{display:flex;align-items:center;gap:4px;padding:5px 8px;border-radius:7px;font-size:11.5px;font-weight:600;cursor:pointer;transition:.15s;line-height:1.3;white-space:nowrap}
 .sch-block:hover{transform:scale(1.03);box-shadow:0 2px 8px rgba(0,0,0,.15);z-index:10}
-.sch-full{background:linear-gradient(135deg,#fecaca,#fca5a5);color:#991b1b;border:1px solid #f87171}
 .sch-opened{background:linear-gradient(135deg,#bbf7d0,#86efac);color:#166534;border:1px solid #4ade80}
-.sch-pre{background:linear-gradient(135deg,#bfdbfe,#93c5fd);color:#1e40af;border:1px solid #60a5fa}
 .sch-notopened{background:#f1f5f9;color:#94a3b8;border:1px solid #cbd5e1}
-.sch-time{font-size:9px;opacity:.75;display:block;margin-top:1px}
+.sch-time{font-size:10px;opacity:.7;font-weight:400;margin-left:auto}
 .sch-tip{display:none;position:absolute;z-index:50;top:100%;left:50%;transform:translateX(-50%);margin-top:4px;min-width:200px;background:#1e293b;color:#e2e8f0;border-radius:10px;padding:12px 14px;font-size:12px;line-height:1.6;box-shadow:0 8px 30px rgba(0,0,0,.25)}
 .sch-block:hover .sch-tip{display:block}
 .sch-tip h4{color:#fff;margin-bottom:6px;font-size:13px;border-bottom:1px solid #475569;padding-bottom:4px}
@@ -220,10 +215,8 @@ tr.drag-over-bottom td{box-shadow:inset 0 -3px 0 0 #3b82f6}
       <button onclick="schWeekOffset(0)" style="margin-left:6px;font-size:10px">今天</button>
     </div>
     <div class="sch-legend">
-      <span><i class="sch-dot" style="background:#fca5a5;border:1px solid #f87171"></i> 已满员</span>
       <span><i class="sch-dot" style="background:#86efac;border:1px solid #4ade80"></i> 已开课</span>
-      <span><i class="sch-dot" style="background:#93c5fd;border:1px solid #60a5fa"></i> 预报名</span>
-      <span><i class="sch-dot" style="background:#f1f5f9;border:1px solid #cbd5e1;color:#94a3b8"></i> 未开班</span>
+      <span><i class="sch-dot" style="background:#f1f5f9;border:1px solid #cbd5e1;color:#94a3b8"></i> 未开课</span>
     </div>
     <div style="overflow-x:auto"><table class="sch-grid" id="schTable"></table></div>
   </div>
@@ -239,7 +232,14 @@ tr.drag-over-bottom td{box-shadow:inset 0 -3px 0 0 #3b82f6}
     <div class="form-group"><label>排课频率（节/月）</label><input type="number" id="classFreq" value="8" min="1"></div>
     <div class="form-group"><label>阶段总课时</label><input type="number" id="classTotal" value="88" min="1"></div>
     <div class="form-group"><label>年前已上课时</label><input type="number" id="classBefore" value="0" min="0"></div>
-    <div class="form-actions"><button class="btn btn-gray" onclick="closeClassModal()">取消</button><button class="btn btn-primary" onclick="saveClass()">保存</button></div>
+    <hr style="margin:14px 0;border:none;border-top:1px dashed #e2e8f0">
+    <div style="font-size:12px;color:#64748b;font-weight:600;margin-bottom:8px">📅 排课设置（用于课程表预览）</div>
+    <div class="form-group"><label>带班老师</label><select id="classTeacher"><option value="Dora">Dora</option><option value="Cindy">Cindy</option></select></div>
+    <div class="form-group"><label>开课日期（留空=未开课）</label><input type="date" id="classOpenDate"></div>
+    <div class="form-group"><label>班级容量</label><input type="number" id="classCapacity" value="8" min="1"></div>
+    <div id="schSessionList" style="margin-bottom:8px"></div>
+    <button type="button" class="btn btn-gray btn-sm" onclick="addSchSessionRow()" style="font-size:11px">+ 添加上课时间</button>
+    <div class="form-actions" style="margin-top:16px"><button class="btn btn-gray" onclick="closeClassModal()">取消</button><button class="btn btn-primary" onclick="saveClass()">保存</button></div>
   </div>
 </div>
 
@@ -368,6 +368,8 @@ function renderClasses() {
 function openClassModal(cid) {
   document.getElementById('classEditId').value = cid || '';
   document.getElementById('classModalTitle').textContent = cid ? '编辑班级' : '新增班级';
+  // 清空排课时段列表
+  document.getElementById('schSessionList').innerHTML = '';
   if (cid) {
     const c = _classes.find(x => x.id === cid);
     if (c) {
@@ -377,14 +379,68 @@ function openClassModal(cid) {
       document.getElementById('classTotal').value = c.total_hours || 0;
       document.getElementById('classBefore').value = c.before_hours || 0;
     }
+    // 如果已有排课数据，回填
+    const sch = SCHEDULE_DATA.find(s => s.classId === cid);
+    if (sch) {
+      document.getElementById('classTeacher').value = sch.teacher || 'Dora';
+      document.getElementById('classOpenDate').value = sch.openDate || '';
+      document.getElementById('classCapacity').value = sch.capacity || 8;
+      (sch.sessions||[]).forEach(s => addSchSessionRow(s.day, s.start, s.end));
+    } else {
+      document.getElementById('classTeacher').value = 'Dora';
+      document.getElementById('classOpenDate').value = '';
+      document.getElementById('classCapacity').value = 8;
+      addSchSessionRow();
+    }
   } else {
     document.getElementById('className').value = '';
     document.getElementById('classPhase').value = 'K1';
     document.getElementById('classFreq').value = 8;
     document.getElementById('classTotal').value = 88;
     document.getElementById('classBefore').value = 0;
+    document.getElementById('classTeacher').value = 'Dora';
+    document.getElementById('classOpenDate').value = '';
+    document.getElementById('classCapacity').value = 8;
+    // 新增班级默认添加一行时段
+    addSchSessionRow();
   }
   document.getElementById('classModal').classList.add('show');
+}
+
+// 添加一行上课时段输入
+let _sessionRowIdx = 0;
+function addSchSessionRow(day, start, end) {
+  const container = document.getElementById('schSessionList');
+  const idx = _sessionRowIdx++;
+  const dayOpts = ['周日','周一','周二','周三','周四','周五','周六'].map((n,i) =>
+    '<option value="' + i + '"' + (day===i?' selected':'') + '>' + n + '</option>'
+  ).join('');
+  const div = document.createElement('div');
+  div.id = 'schRow_' + idx;
+  div.style.cssText = 'display:flex;gap:6px;align-items:center;margin-bottom:6px';
+  div.innerHTML =
+    '<select id="schDay_' + idx + '" style="flex:1;padding:5px 8px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px">' +
+      '<option value="">星期</option>' + dayOpts + '</select>' +
+    '<input type="time" id="schStart_' + idx + '" value="' + (start||'') + '" placeholder="开始" style="flex:1;padding:5px 8px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px">' +
+    '<input type="time" id="schEnd_' + idx + '" value="' + (end||'') + '" placeholder="结束" style="flex:1;padding:5px 8px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px">' +
+    '<button type="button" onclick="this.parentElement.remove()" style="padding:4px 8px;background:#fef2f2;color:#dc2626;border:1px solid #fecaca;border-radius:6px;cursor:pointer;font-size:11px">×</button>';
+  container.appendChild(div);
+}
+
+// 从表单读取时段数据
+function getSchSessions() {
+  const sessions = [];
+  const rows = document.querySelectorAll('#schSessionList > div');
+  rows.forEach(row => {
+    const id = row.id.replace('schRow_','');
+    const day = parseInt(document.getElementById('schDay_' + id).value);
+    const start = document.getElementById('schStart_' + id).value;
+    const end = document.getElementById('schEnd_' + id).value;
+    if (!isNaN(day) && start && end) {
+      sessions.push({ day, start, period: start < '12' ? 'am' : (start < '18' ? 'pm' : 'eve'), end });
+    }
+  });
+  return sessions;
 }
 
 function closeClassModal() { document.getElementById('classModal').classList.remove('show'); }
@@ -399,17 +455,46 @@ async function saveClass() {
     total_hours: parseFloat(document.getElementById('classTotal').value) || 0,
     before_hours: parseFloat(document.getElementById('classBefore').value) || 0
   };
+  // 排课数据
+  const schData = {
+    teacher: document.getElementById('classTeacher').value,
+    openDate: document.getElementById('classOpenDate').value,
+    capacity: parseInt(document.getElementById('classCapacity').value) || 8,
+    sessions: getSchSessions()
+  };
   const editId = document.getElementById('classEditId').value;
   if (editId) {
     const { error } = await sb.from('classes').update(data).eq('id', parseInt(editId));
     if (error) { showToast('更新失败: '+error.message, false); return; }
+    // 更新排课数据
+    const schIdx = SCHEDULE_DATA.findIndex(s => s.classId === parseInt(editId));
+    if (schIdx >= 0) {
+      Object.assign(SCHEDULE_DATA[schIdx], {
+        teacher: schData.teacher, openDate: schData.openDate,
+        capacity: schData.capacity, sessions: schData.sessions,
+        statusOverride: schData.openDate ? undefined : '未开课'
+      });
+      try { localStorage.setItem('edusys_schedule', JSON.stringify(SCHEDULE_DATA)); } catch(e){}
+    }
     showToast('班级已更新');
   } else {
     const maxId = _classes.reduce((m, c) => Math.max(m, c.id), 0);
     data.id = maxId + 1;
+    const newId = data.id;
     const { error } = await sb.from('classes').insert(data);
     if (error) { showToast('新增失败: '+error.message, false); return; }
-    showToast('班级已新增');
+    // 自动加入排课表
+    const phase = data.phase;
+    SCHEDULE_DATA.push({
+      classId: newId, name: name, phase: phase,
+      teacher: schData.teacher,
+      sessions: schData.sessions,
+      openDate: schData.openDate,
+      capacity: schData.capacity,
+      statusOverride: schData.openDate ? undefined : '未开课'
+    });
+    try { localStorage.setItem('edusys_schedule', JSON.stringify(SCHEDULE_DATA)); } catch(e){}
+    showToast('班级已新增（已自动加入课程表）');
   }
   closeClassModal();
   await loadAll();
@@ -985,7 +1070,7 @@ const SCHEDULE_DATA = [
    openDate:'2026-01-21', capacity:8},
   {classId:7, name:'K1004', phase:'K1', teacher:'Dora',
    sessions:[{day:0,period:'eve',start:'18:00',end:'19:00'},{day:6,period:'pm',start:'14:00',end:'15:30'}],
-   openDate:'', capacity:8, statusOverride:'预报名'},
+   openDate:'', capacity:8, statusOverride:'未开课'},
   {classId:4, name:'K2001', phase:'K2', teacher:'Dora',
    sessions:[{day:3,period:'eve',start:'19:00',end:'20:30'},{day:5,period:'eve',start:'19:00',end:'20:30'}],
    openDate:'2026-04-02', capacity:10},
@@ -1020,7 +1105,7 @@ function renderSchedule() {
     + ' ~ ' +
     we.getFullYear() + '-' + String(we.getMonth()+1).padStart(2,'0') + '-' + String(we.getDate()).padStart(2,'0');
 
-  // 统计每个班级的学员数和剩余名额
+  // 统计每个班级的学员数和状态
   const classStats = {};
   _classes.forEach(c => {
     const studs = _students.filter(s => s.class_id === c.id && s.status !== '毕业');
@@ -1029,87 +1114,76 @@ function renderSchedule() {
     classStats[c.id] = {
       count: studs.length,
       remaining: Math.max(0, cap - studs.length),
-      status: active && active.statusOverride ? active.statusOverride :
-              studs.length >= cap ? '已满员' :
-              (c.m3||0)+(c.m4||0)+(c.m5||0)+(c.m6||0) > 0 ? '已开课' :
-              c.name.includes('未开班') ? '未开班' : '已开课'
+      // 只保留两种状态：已开课 / 未开课（目前仅 K1004 是未开课）
+      isOpened: active ? (active.statusOverride !== '未开课' && active.openDate !== '') : false
     };
   });
 
-  // 构建表格
+  // 构建表格：表头 | 周一~周日（无上午/下午/晚上子列）
   let h = '<thead><tr><th style="width:90px">带班老师</th>';
   for (let d = 0; d < 7; d++) {
     const dt = new Date(ws); dt.setDate(dt.getDate() + d);
     const isToday = new Date().toDateString() === dt.toDateString();
-    h += '<th colspan="3" class="day-hd">' + DAY_NAMES[d] +
+    h += '<th class="day-hd">' + DAY_NAMES[d] +
       '<br><span style="font-weight:400;font-size:10px;color:'+(isToday?'#ef4444':'#94a3b8')+'">' +
       (dt.getMonth()+1) + '/' + dt.getDate() + (isToday?' ← 今天':'') + '</span></th>';
   }
-  h += '</tr><tr><th></th>'; // 角标为空
-  for (let d = 0; d < 7; d++) {
-    for (let p of PERIODS) {
-      h += '<th class="sub-hd">' + p.label + '</th>';
-    }
-  }
   h += '</tr></thead><tbody>';
 
-  // 按阶段分组
-  const phases = {};
+  // 按带班老师分组，每个老师一个区块
+  const teachers = {};
   SCHEDULE_DATA.forEach(sch => {
-    if (!phases[sch.phase]) phases[sch.phase] = [];
-    phases[sch.phase].push(sch);
+    const t = sch.teacher || '未分配';
+    if (!teachers[t]) teachers[t] = [];
+    teachers[t].push(sch);
   });
-  const phaseOrder = ['K1','K2','S'];
-  const phaseLabels = {'K1':'K1阶段','K2':'K2阶段','S':'S阶段'};
+  // 按老师名排序：Dora 在前
+  const teacherOrder = Object.keys(teachers).sort((a,b) => a.localeCompare(b, 'zh'));
 
-  phaseOrder.forEach(ph => {
-    const items = phases[ph] || [];
-    if (!items.length) return;
-    // 阶段标题行
-    h += '<tr class="phase-row"><td colspan="22" class="phase-label">' + (phaseLabels[ph]||ph) + '</td></tr>';
-    items.forEach(sch => {
-      const stats = classStats[sch.classId] || {count:0,remaining:sch.capacity,status:'未开班'};
+  teacherOrder.forEach(tchr => {
+    const items = teachers[tchr];
+    // 老师标题行（合并所有班级行）
+    const totalRows = items.length;
+    h += '<tr><td rowspan="' + totalRows + '" class="teacher-label">' + tchr + '</td>';
+
+    items.forEach((sch, idx) => {
+      if (idx > 0) h += '<tr>'; // 后续班级新起一行（不含老师列）
+      const stats = classStats[sch.classId] || {count:0,remaining:sch.capacity||8,isOpened:false};
       const cls = _classes.find(c => c.id === sch.classId);
-      h += '<tr><td class="cls-label"><b>' + (sch.teacher||'') + '</b><br><span class="tag tag-' + (sch.phase||'k1').toLowerCase() + '">' +
-        cls.name.replace(/\(.+\)/,'') + '</span> ' + (cls.name.match(/\((.+)\)/)?.[1]?.replace('未开班','')||'') + '</td>';
+      const cssClass = stats.isOpened ? 'sch-opened' : 'sch-notopened';
 
       for (let d = 0; d < 7; d++) {
-        for (let p of PERIODS) {
-          const sess = sch.sessions.find(s => s.day === d && s.period === p.key);
-          h += '<td class="sch-cell">';
-          if (sess) {
-            const cssClass = stats.status === '已满员' ? 'sch-full' :
-                              stats.status === '预报名' ? 'sch-pre' :
-                              stats.status === '已开课' ? 'sch-opened' : 'sch-notopened';
-            h += '<div class="sch-block ' + cssClass + '" onmouseenter="showSchTip(this)" onmouseleave="hideSchTip(this)">' +
-              '<b>' + cls.name.replace(/\(.+\)/,'') + '</b>' +
-              '<span class="sch-time">' + sess.start + '-' + sess.end + '</span>' +
-              '<div class="sch-tip"><h4>' + cls.name + '</h4>' +
-                '<div class="sch-tip-row"><span class="sch-tip-lbl">带班老师</span><span class="sch-tip-val">' + (sch.teacher||'—') + '</span></div>' +
-                '<div class="sch-tip-row"><span class="sch-tip-lbl">阶段</span><span class="sch-tip-val">' + sch.phase + '阶段</span></div>' +
-                '<div class="sch-tip-row"><span class="sch-tip-lbl">开课日期</span><span class="sch-tip-val">' + (sch.openDate||'待定') + '</span></div>' +
-                '<div class="sch-tip-row"><span class="sch-tip-lbl">上课时间</span><span class="sch-tip-val">' + sess.start + '</span></div>' +
-                '<div class="sch-tip-row"><span class="sch-tip-lbl">下课时间</span><span class="sch-tip-val">' + sess.end + '</span></div>' +
-                '<div class="sch-tip-row"><span class="sch-tip-lbl">学员数</span><span class="sch-tip-val">' + stats.count + ' 人</span></div>' +
-                '<div class="sch-tip-row"><span class="sch-tip-lbl">剩余名额</span><span class="sch-tip-val" style="color:'+(stats.remaining>0?'#4ade80':'#f87171')+'">' + stats.remaining + ' 人</span></div>' +
-                '<div class="sch-tip-row"><span class="sch-tip-lbl">状态</span><span class="sch-tip-val">' + stats.status + '</span></div>' +
-              '</div></div>';
-          }
-          h += '</td>';
-        }
+        h += '<td class="sch-cell">';
+        // 找出该班级在这一天的所有课时，按开始时间排序
+        const daySessions = sch.sessions
+          .filter(s => s.day === d)
+          .sort((a,b) => a.start.localeCompare(b.start));
+        daySessions.forEach(sess => {
+          h += '<div class="sch-block ' + cssClass + '" onmouseenter="showSchTip(this)" onmouseleave="hideSchTip(this)">' +
+            '<b>' + (cls ? cls.name.replace(/\(.+\)/,'') : sch.name) + '</b>' +
+            '<span class="sch-time">' + sess.start + '-' + sess.end + '</span>' +
+            '<div class="sch-tip"><h4>' + (cls ? cls.name : sch.name) + '</h4>' +
+              '<div class="sch-tip-row"><span class="sch-tip-lbl">带班老师</span><span class="sch-tip-val">' + tchr + '</span></div>' +
+              '<div class="sch-tip-row"><span class="sch-tip-lbl">阶段</span><span class="sch-tip-val">' + sch.phase + '阶段</span></div>' +
+              '<div class="sch-tip-row"><span class="sch-tip-lbl">上课时间</span><span class="sch-tip-val">' + DAY_NAMES[d] + ' ' + sess.start + '-' + sess.end + '</span></div>' +
+              '<div class="sch-tip-row"><span class="sch-tip-lbl">开课日期</span><span class="sch-tip-val">' + (sch.openDate||'待定') + '</span></div>' +
+              '<div class="sch-tip-row"><span class="sch-tip-lbl">学员数</span><span class="sch-tip-val">' + stats.count + ' 人</span></div>' +
+              '<div class="sch-tip-row"><span class="sch-tip-lbl">剩余名额</span><span class="sch-tip-val" style="color:'+(stats.remaining>0?'#4ade80':'#f87171')+'">' + stats.remaining + ' 人</span></div>' +
+              '<div class="sch-tip-row"><span class="sch-tip-lbl">状态</span><span class="sch-tip-val">' + (stats.isOpened ? '已开课' : '未开课') + '</span></div>' +
+            '</div></div>';
+        });
+        h += '</td>';
       }
       h += '</tr>';
     });
   });
 
-  // 处理没有在 SCHEDULE_DATA 中配置的班级（如 K1004 未开班等）
+  // 处理没有在 SCHEDULE_DATA 中配置的班级
   const configuredIds = SCHEDULE_DATA.map(s => s.classId);
   _classes.filter(c => !configuredIds.includes(c.id)).forEach(c => {
     const studs = _students.filter(s => s.class_id === c.id && s.status !== '毕业');
-    h += '<tr><td class="cls-label"><span class="tag tag-' + (c.phase||'k1').toLowerCase() + '">' + (c.phase||'') + '</span> ' + c.name + '</td>';
-    for (let d = 0; d < 7; d++) {
-      for (let p of PERIODS) { h += '<td class="sch-cell"></td>'; }
-    }
+    h += '<tr><td class="teacher-label">—</td>';
+    for (let d = 0; d < 7; d++) { h += '<td class="sch-cell"></td>'; }
     h += '</tr>';
   });
 
@@ -1126,19 +1200,18 @@ function schWeekOffset(delta) {
 }
 
 function exportSchedule() {
-  const headers = ['带班老师','班级','阶段','星期','时段','开始时间','结束时间','开课日期','学员数','剩余名额','状态'];
+  const headers = ['带班老师','班级','阶段','星期','开始时间','结束时间','开课日期','学员数','剩余名额','状态'];
   const rows = [];
-  const ws = getSchWeekStart(_schWeekOffset);
   SCHEDULE_DATA.forEach(sch => {
     const cls = _classes.find(c => c.id === sch.classId);
     const studs = _students.filter(s => s.class_id === sch.classId && s.status !== '毕业');
     const rem = Math.max(0, sch.capacity - studs.length);
-    const status = sch.statusOverride ||
-                   (studs.length >= sch.capacity ? '已满员' :
-                    (cls&&(cls.m3||0)+(cls.m4||0)+(cls.m5||0)+(cls.m6||0)>0) ? '已开课' : '未开班');
+    // 只保留两种状态
+    const isOpened = sch.statusOverride !== '未开课' && sch.openDate !== '';
+    sch.sessions.sort((a,b) => a.day - b.day || a.start.localeCompare(b.start));
     sch.sessions.forEach(sess => {
-      rows.push([sch.teacher||'', cls.name, sch.phase + '阶段', DAY_NAMES[sess.day], PERIODS.find(p=>p.key===sess.period)?.label||'',
-        sess.start, sess.end, sch.openDate||'待定', ''+studs.length, ''+rem, status]);
+      rows.push([sch.teacher||'', cls.name, sch.phase + '阶段', DAY_NAMES[sess.day],
+        sess.start, sess.end, sch.openDate||'待定', ''+studs.length, ''+rem, isOpened ? '已开课' : '未开课']);
     });
   });
   exportCSV(headers, rows, '课程表预览_' + new Date().toISOString().slice(0,10) + '.csv');
@@ -1156,6 +1229,28 @@ function initApp() {
 
 // 登录
 const LOGIN_PWD = 'DK0308';
+
+// 加载用户自定义排课数据（localStorage 持久化）
+(function() {
+  try {
+    const saved = localStorage.getItem('edusys_schedule');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // 合并策略：保留原始硬编码数据 + 追加用户新增的
+      const baseIds = [1,2,3,7,4,5,6]; // 原始 classId
+      const userEntries = parsed.filter(s => !baseIds.includes(s.classId));
+      // 更新已有条目的排课信息（teacher/sessions/openDate/capacity）
+      parsed.forEach(p => {
+        const existing = SCHEDULE_DATA.find(s => s.classId === p.classId);
+        if (existing) {
+          Object.assign(existing, { teacher: p.teacher, sessions: p.sessions, openDate: p.openDate, capacity: p.capacity, statusOverride: p.statusOverride });
+        }
+      });
+      // 追加全新条目
+      userEntries.forEach(u => { if (!SCHEDULE_DATA.find(s => s.classId === u.classId)) SCHEDULE_DATA.push(u); });
+    }
+  } catch(e) {}
+})();
 
 function doLogin() {
   const input = document.getElementById('loginPwd').value;
