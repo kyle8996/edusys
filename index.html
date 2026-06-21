@@ -1231,7 +1231,7 @@ function initApp() {
 const LOGIN_PWD = 'DK0308';
 
 // 加载用户自定义排课数据（localStorage 持久化）
-// SCHEDULE_VERSION 2 = day 约定 0=周一（旧版 1 = 0=周日，需迁移）
+// SCHEDULE_VERSION 2 = day 约定 0=周一（旧版用 JS Date.getDay 0=周日，需迁移）
 const SCHEDULE_VERSION = 2;
 (function() {
   try {
@@ -1239,28 +1239,25 @@ const SCHEDULE_VERSION = 2;
     const saved = localStorage.getItem('edusys_schedule');
     if (!saved) return;
     let parsed = JSON.parse(saved);
-    // 旧版数据迁移：day 0=周日 → 0=周一
+    // 版本不匹配时：清除旧缓存，避免脏数据覆盖硬编码数据
     if (savedVer !== String(SCHEDULE_VERSION)) {
-      const oldToNew = {0:6, 1:0, 2:1, 3:2, 4:3, 5:4, 6:5};
-      parsed.forEach(s => {
-        (s.sessions||[]).forEach(sess => { if (oldToNew[sess.day] !== undefined) sess.day = oldToNew[sess.day]; });
-      });
-      localStorage.setItem('edusys_schedule', JSON.stringify(parsed));
+      console.log('[课程表] 检测到旧版排课缓存(v'+savedVer+')，已自动清除，使用系统默认排课');
+      localStorage.removeItem('edusys_schedule');
       localStorage.setItem('edusys_schedule_ver', String(SCHEDULE_VERSION));
+      return; // 直接使用代码中的硬编码数据（已是正确的 day 值）
     }
-    // 合并策略：保留原始硬编码数据 + 追加用户新增的
-    const baseIds = [1,2,3,7,4,5,6]; // 原始 classId
-    const userEntries = parsed.filter(s => !baseIds.includes(s.classId));
-    // 更新已有条目的排课信息（teacher/sessions/openDate/capacity）
+    // 版本匹配：允许 localStorage 覆盖（用户可能已通过弹窗编辑过排课）
     parsed.forEach(p => {
       const existing = SCHEDULE_DATA.find(s => s.classId === p.classId);
       if (existing) {
         Object.assign(existing, { teacher: p.teacher, sessions: p.sessions, openDate: p.openDate, capacity: p.capacity, statusOverride: p.statusOverride });
+      } else {
+        SCHEDULE_DATA.push(p); // 用户新增的班级
       }
     });
-    // 追加全新条目
-    userEntries.forEach(u => { if (!SCHEDULE_DATA.find(s => s.classId === u.classId)) SCHEDULE_DATA.push(u); });
-  } catch(e) {}
+  } catch(e) {
+    console.warn('[课程表] 排课缓存加载失败:', e);
+  }
 })();
 
 function doLogin() {
