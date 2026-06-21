@@ -87,13 +87,12 @@ tr.drag-over-bottom td{box-shadow:inset 0 -3px 0 0 #3b82f6}
 .sch-grid th,.sch-grid td{border:1px solid #e2e8f0;padding:0;vertical-align:top}
 .sch-grid thead th{background:#f8fafc;padding:10px 6px;font-size:12px;color:#475569;font-weight:600;text-align:center;position:sticky;top:0;z-index:2}
 .sch-grid thead th.day-hd{font-size:13px;background:#f1f5f9;color:#1e293b}
-.sch-grid .teacher-label{padding:12px 14px!important;font-weight:700;font-size:14px;color:#1e40af;text-align:center!important;background:#eff6ff;border-bottom:2px solid #bfdbfe}
-.sch-cell{min-height:52px;position:relative;padding:4px 3px!important;vertical-align:top}
-.sch-block{display:block;padding:5px 8px;border-radius:7px;font-size:11.5px;font-weight:600;cursor:pointer;transition:.15s;line-height:1.3;white-space:nowrap;margin-bottom:3px}
-.sch-block:hover{transform:scale(1.03);box-shadow:0 2px 8px rgba(0,0,0,.15);z-index:10}
+.sch-cell{position:relative;padding:0!important;height:42px}
+.sch-block{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4px 6px;border-radius:7px;font-size:11.5px;font-weight:600;cursor:pointer;transition:.15s;line-height:1.3;white-space:nowrap;height:100%;box-sizing:border-box;margin:2px}
+.sch-block:hover{transform:scale(1.02);box-shadow:0 2px 10px rgba(0,0,0,.18);z-index:10}
 .sch-opened{background:linear-gradient(135deg,#bbf7d0,#86efac);color:#166534;border:1px solid #4ade80}
 .sch-notopened{background:#f1f5f9;color:#94a3b8;border:1px solid #cbd5e1}
-.sch-time{font-size:10px;opacity:.7;font-weight:400;float:right}
+.sch-time{font-size:9.5px;opacity:.75;font-weight:400;margin-top:1px}
 .sch-block{position:relative} /* 为 tooltip 提供定位上下文 */
 .sch-tip{display:none;position:absolute;z-index:9999;top:100%;left:50%;transform:translateX(-50%);margin-top:6px;min-width:220px;background:#1e293b;color:#e2e8f0;border-radius:10px;padding:12px 14px;font-size:12px;line-height:1.6;box-shadow:0 8px 30px rgba(0,0,0,.4);pointer-events:auto}
 .sch-block:hover .sch-tip{display:block}
@@ -109,7 +108,7 @@ tr.drag-over-bottom td{box-shadow:inset 0 -3px 0 0 #3b82f6}
 .sch-week-nav button{padding:4px 10px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;font-size:12px;cursor:pointer}
 .sch-week-nav button:hover{background:#f1f5f9}
 /* 时间行标签 */
-.sch-time-label{padding:8px 10px!important;font-size:11.5px;color:#64748b;font-weight:600;text-align:right!important;white-space:nowrap;background:#fafafa;border-right:2px solid #e2e8f0;vertical-align:middle;width:65px}
+.sch-time-label{padding:6px 8px!important;font-size:11px;color:#64748b;font-weight:600;text-align:right!important;white-space:nowrap;background:#fafafa;border-right:2px solid #e2e8f0;vertical-align:middle;width:55px}
 .sch-time-row td{border-top:1px dashed #e2e8f0}
 </style>
 </head>
@@ -1140,7 +1139,6 @@ function getSchWeekStart(offset) {
 
 function renderSchedule() {
   const ws = getSchWeekStart(_schWeekOffset);
-  // 更新周范围显示
   const we = new Date(ws); we.setDate(we.getDate() + 6);
   document.getElementById('schWeekRange').textContent =
     ws.getFullYear() + '-' + String(ws.getMonth()+1).padStart(2,'0') + '-' + String(ws.getDate()).padStart(2,'0')
@@ -1160,20 +1158,58 @@ function renderSchedule() {
     };
   });
 
-  // ═══ 按时间行渲染（解决排序和对齐问题）═══
-  // 收集所有课时，按时间分组
-  const timeSlots = {}; // key = "HH:MM", value = [{day, sch, sess}]
+  // ═══ 固定时间网格（每30分钟一行）═══
+  const SLOT_MIN = 30; // 每格30分钟
+  // 找到最早/最晚时间来确定范围
+  let minH = 23, maxH = 8;
   SCHEDULE_DATA.forEach(sch => {
     (sch.sessions||[]).forEach(sess => {
-      if (!timeSlots[sess.start]) timeSlots[sess.start] = [];
-      timeSlots[sess.start].push({ day: sess.day, sch, sess });
+      const sh = parseInt(sess.start.split(':')[0]);
+      const eh = parseInt(sess.end.split(':')[0]) + (parseInt(sess.end.split(':')[1]) > 0 ? 1 : 0);
+      if (sh < minH) minH = sh;
+      if (eh > maxH) maxH = eh;
     });
   });
-  // 按时间排序（早→晚）
-  const sortedTimes = Object.keys(timeSlots).sort();
+  // 向上取整到整点边界
+  minH = Math.max(9, Math.floor(minH / 1) * 1);
+  maxH = Math.min(21, Math.ceil(maxH / 1) * 1);
 
-  // 构建表头
-  let h = '<thead><tr><th style="width:70px">时间</th>';
+  // 生成所有时间格：["09:00","09:30","10:00",...]
+  const timeGrid = [];
+  for (let h = minH; h <= maxH; h++) {
+    timeGrid.push(String(h).padStart(2,'0') + ':00');
+    if (h < maxH) timeGrid.push(String(h).padStart(2,'0') + ':30');
+  }
+
+  // 构建占用表：occupied[day][slotIndex] = { sch, sess, cssClass, displayName, stats }
+  const occupied = {};
+  for (let d = 0; d < 7; d++) occupied[d] = {};
+
+  SCHEDULE_DATA.forEach(sch => {
+    (sch.sessions||[]).forEach(sess => {
+      const day = sess.day;
+      // 找到起始格索引
+      const startIdx = timeGrid.findIndex(t => t >= sess.start);
+      if (startIdx < 0) return;
+      // 计算跨多少格（向上取整）
+      const startMin = parseInt(sess.start.split(':')[0])*60 + parseInt(sess.start.split(':')[1]);
+      const endMin = parseInt(sess.end.split(':')[0])*60 + parseInt(sess.end.split(':')[1]);
+      const spanSlots = Math.max(1, Math.ceil((endMin - startMin) / SLOT_MIN));
+      const stats = classStats[sch.classId] || {count:0,remaining:sch.capacity||8,isOpened:false};
+      const cls = _classes.find(c => c.id === sch.classId);
+      const cssClass = stats.isOpened ? 'sch-opened' : 'sch-notopened';
+      const displayName = cls ? cls.name.replace(/\(.+\)/,'') : sch.name;
+
+      occupied[day][startIdx] = { sch, sess, cssClass, displayName, stats, span: spanSlots };
+      // 标记后续被占用的格子
+      for (let s = 1; s < spanSlots; s++) {
+        occupied[day][startIdx + s] = '__spanned__'; // 占位标记
+      }
+    });
+  });
+
+  // ═══ 构建表头 ═══
+  let h = '<thead><tr><th style="width:55px">时间</th>';
   for (let d = 0; d < 7; d++) {
     const dt = new Date(ws); dt.setDate(dt.getDate() + d);
     const isToday = new Date().toDateString() === dt.toDateString();
@@ -1183,52 +1219,77 @@ function renderSchedule() {
   }
   h += '</tr></thead><tbody>';
 
-  // 老师区块分隔（记录上一个老师，变化时插入分隔线）
+  // 老师分隔线
   let lastTeacher = null;
 
-  // 每个时间一行
-  sortedTimes.forEach(time => {
-    const entries = timeSlots[time];
-    // 判断这一行是否跨了不同老师
-    const teachersInRow = [...new Set(entries.map(e => e.sch.teacher || '—'))].sort();
-    // 如果老师变了，插入老师标签行
-    if (teachersInRow[0] !== lastTeacher) {
-      lastTeacher = teachersInRow[0];
-      h += '<tr class="sch-time-row"><td colspan="8" style="background:#eff6ff;padding:6px 14px;font-size:12px;color:#1e40af;font-weight:700">👩‍🏫 ' + lastTeacher + '</td></tr>';
+  // ═══ 每个时间格一行 ═══
+  for (let si = 0; si < timeGrid.length; si++) {
+    const timeLabel = timeGrid[si];
+
+    // 判断这行是否有内容，以及老师是否变化
+    let rowHasContent = false;
+    let rowTeacher = null;
+    for (let d = 0; d < 7; d++) {
+      const cell = occupied[d][si];
+      if (cell && cell !== '__spanned__') {
+        rowHasContent = true;
+        rowTeacher = cell.sch.teacher || '—';
+      } else if (!cell) {
+        // 检查这个时间段有没有任何班级（用于判断老师变化）
+        SCHEDULE_DATA.forEach(sch => {
+          (sch.sessions||[]).forEach(sess => {
+            if (sess.day === d) {
+              const sm = parseInt(sess.start.split(':')[0])*60+parseInt(sess.start.split(':')[1]);
+              const em = parseInt(sess.end.split(':')[0])*60+parseInt(sess.end.split(':')[1]);
+              const slotMin = parseInt(timeLabel.split(':')[0])*60+parseInt(timeLabel.split(':')[1]);
+              if (slotMin >= sm && slotMin < em) {
+                rowTeacher = sch.teacher || '—';
+              }
+            }
+          });
+        });
+      }
     }
 
-    h += '<tr><td class="sch-time-label">' + time + '</td>';
+    // 老师变化时插入分隔行
+    if (rowTeacher && rowTeacher !== lastTeacher) {
+      lastTeacher = rowTeacher;
+      h += '<tr class="sch-time-row"><td colspan="8" style="background:#eff6ff;padding:5px 14px;font-size:11.5px;color:#1e40af;font-weight:700">👩‍🏫 ' + lastTeacher + '</td></tr>';
+    }
+
+    h += '<tr>';
+    // 时间标签（只在整点或半点显示）
+    h += '<td class="sch-time-label">' + timeLabel + '</td>';
+
     for (let d = 0; d < 7; d++) {
-      h += '<td class="sch-cell">';
-      // 找出该时间、该天的所有课时
-      const dayEntries = entries.filter(e => e.day === d)
-        .sort((a,b) => (a.sch.phase||'').localeCompare(b.sch.phase||''));
-      dayEntries.forEach(({sch, sess}) => {
-        const stats = classStats[sch.classId] || {count:0,remaining:sch.capacity||8,isOpened:false};
-        const cls = _classes.find(c => c.id === sch.classId);
-        const cssClass = stats.isOpened ? 'sch-opened' : 'sch-notopened';
-        const displayName = cls ? cls.name.replace(/\(.+\)/,'') : sch.name;
-        h += '<div class="sch-block ' + cssClass + '" onmouseenter="showSchTip(this)" onmouseleave="hideSchTip(this)">' +
-          '<b>' + displayName + '</b>' +
-          '<span class="sch-time">' + sess.start + '-' + sess.end + '</span>' +
-          '<div class="sch-tip"><h4>' + (cls ? cls.name : sch.name) + '</h4>' +
-            '<div class="sch-tip-row"><span class="sch-tip-lbl">带班老师</span><span class="sch-tip-val">' + (sch.teacher||'—') + '</span></div>' +
-            '<div class="sch-tip-row"><span class="sch-tip-lbl">阶段</span><span class="sch-tip-val">' + sch.phase + '阶段</span></div>' +
-            '<div class="sch-tip-row"><span class="sch-tip-lbl">星期</span><span class="sch-tip-val">' + DAY_NAMES[d] + '</span></div>' +
-            '<div class="sch-tip-row"><span class="sch-tip-lbl">时间</span><span class="sch-tip-val">' + sess.start + '-' + sess.end + '</span></div>' +
-            '<div class="sch-tip-row"><span class="sch-tip-lbl">开课日期</span><span class="sch-tip-val">' + (sch.openDate||'待定') + '</span></div>' +
-            '<div class="sch-tip-row"><span class="sch-tip-lbl">学员数</span><span class="sch-tip-val">' + stats.count + ' 人</span></div>' +
-            '<div class="sch-tip-row"><span class="sch-tip-lbl">剩余名额</span><span class="sch-tip-val" style="color:'+(stats.remaining>0?'#4ade80':'#f87171')+'">' + stats.remaining + ' 人</span></div>' +
-            '<div class="sch-tip-row"><span class="sch-tip-lbl">状态</span><span class="sch-tip-val">' + (stats.isOpened ? '已开课' : '未开课') + '</span></div>' +
-          '</div></div>';
-      });
-      h += '</td>';
+      const cell = occupied[d][si];
+      if (!cell) {
+        // 空格子
+        h += '<td class="sch-cell"></td>';
+      } else if (cell === '__spanned__') {
+        // 被上方 rowspan 占用，不输出 td
+      } else {
+        // 有班级块，使用 rowspan 跨多行
+        h += '<td class="sch-cell" rowspan="' + cell.span + '">' +
+          '<div class="sch-block ' + cell.cssClass + '" onmouseenter="showSchTip(this)" onmouseleave="hideSchTip(this)">' +
+            '<b>' + cell.displayName + '</b>' +
+            '<span class="sch-time">' + cell.sess.start + '-' + cell.sess.end + '</span>' +
+            '<div class="sch-tip"><h4>' + (cell.displayName) + '</h4>' +
+              '<div class="sch-tip-row"><span class="sch-tip-lbl">带班老师</span><span class="sch-tip-val">' + (cell.sch.teacher||'—') + '</span></div>' +
+              '<div class="sch-tip-row"><span class="sch-tip-lbl">阶段</span><span class="sch-tip-val">' + cell.sch.phase + '阶段</span></div>' +
+              '<div class="sch-tip-row"><span class="sch-tip-lbl">星期</span><span class="sch-tip-val">' + DAY_NAMES[d] + '</span></div>' +
+              '<div class="sch-tip-row"><span class="sch-tip-lbl">时间</span><span class="sch-tip-val">' + cell.sess.start + '-' + cell.sess.end + '</span></div>' +
+              '<div class="sch-tip-row"><span class="sch-tip-lbl">开课日期</span><span class="sch-tip-val">' + (cell.sch.openDate||'待定') + '</span></div>' +
+              '<div class="sch-tip-row"><span class="sch-tip-lbl">学员</span><span class="sch-tip-val">' + cell.stats.count + ' 人</span></div>' +
+              '<div class="sch-tip-row"><span class="sch-tip-lbl">剩余</span><span class="sch-tip-val" style="color:'+(cell.stats.remaining>0?'#4ade80':'#f87171')+'">' + cell.stats.remaining + ' 人</span></div>' +
+              '<div class="sch-tip-row"><span class="sch-tip-lbl">状态</span><span class="sch-tip-val">' + (cell.stats.isOpened ? '已开课' : '未开课') + '</span></div>' +
+            '</div></div></td>';
+      }
     }
     h += '</tr>';
-  });
+  }
 
-  // 如果没有任何排课数据，显示提示
-  if (sortedTimes.length === 0) {
+  if (timeGrid.length === 0) {
     h += '<tr><td colspan="8" style="text-align:center;padding:30px;color:#94a3b8">暂无排课数据，点击「✏️ 编辑排课」添加班级上课时间</td></tr>';
   }
 
