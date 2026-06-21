@@ -81,7 +81,37 @@ tr.drag-over-bottom td{box-shadow:inset 0 -3px 0 0 #3b82f6}
 .summary-item .lbl{font-size:11px;color:#64748b;margin-top:2px}
 .summary-item .sub{font-size:11px;color:#94a3b8;margin-top:1px}
 .sc-active .num{color:#2563eb}.sc-opened .num{color:#10b981}.sc-notopened .num{color:#94a3b8}.sc-grad .num{color:#8b5cf6}
-</style>
+
+/* ═══ 课程表预览 ═══ */
+.sch-grid{border-collapse:collapse;width:100%;table-layout:fixed}
+.sch-grid th,.sch-grid td{border:1px solid #e2e8f0;padding:0;vertical-align:top}
+.sch-grid thead th{background:#f8fafc;padding:8px 4px;font-size:11px;color:#475569;font-weight:600;text-align:center;position:sticky;top:0;z-index:2}
+.sch-grid thead th.day-hd{font-size:12px;background:#f1f5f9;color:#1e293b}
+.sch-grid thead th.sub-hd{width:60px;font-size:10px;background:#f8fafc;color:#64748b;width:58px}
+.sch-grid .phase-row td{background:#f0f9ff;border-top:2px solid #93c5fd}
+.sch-grid .phase-label{padding:8px 12px!important;font-weight:700;font-size:13px;color:#1e40af;white-space:nowrap;text-align:left!important}
+.sch-grid .cls-label{padding:7px 8px!important;font-weight:600;font-size:12px;color:#334155;text-align:left!important;white-space:nowrap;background:#fff}
+.sch-cell{min-height:48px;position:relative;padding:2px!important}
+.sch-block{display:block;padding:4px 6px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;transition:.15s;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sch-block:hover{transform:scale(1.03);box-shadow:0 2px 8px rgba(0,0,0,.15);z-index:10}
+.sch-full{background:linear-gradient(135deg,#fecaca,#fca5a5);color:#991b1b;border:1px solid #f87171}
+.sch-opened{background:linear-gradient(135deg,#bbf7d0,#86efac);color:#166534;border:1px solid #4ade80}
+.sch-pre{background:linear-gradient(135deg,#bfdbfe,#93c5fd);color:#1e40af;border:1px solid #60a5fa}
+.sch-notopened{background:#f1f5f9;color:#94a3b8;border:1px solid #cbd5e1}
+.sch-time{font-size:9px;opacity:.75;display:block;margin-top:1px}
+.sch-tip{display:none;position:absolute;z-index:50;top:100%;left:50%;transform:translateX(-50%);margin-top:4px;min-width:200px;background:#1e293b;color:#e2e8f0;border-radius:10px;padding:12px 14px;font-size:12px;line-height:1.6;box-shadow:0 8px 30px rgba(0,0,0,.25)}
+.sch-block:hover .sch-tip{display:block}
+.sch-tip h4{color:#fff;margin-bottom:6px;font-size:13px;border-bottom:1px solid #475569;padding-bottom:4px}
+.sch-tip-row{display:flex;justify-content:space-between;padding:2px 0}
+.sch-tip-lbl{color:#94a3b8}
+.sch-tip-val{color:#fff;font-weight:600}
+.sch-legend{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px;font-size:11px}
+.sch-legend span{display:inline-flex;align-items:center;gap:4px}
+.sch-dot{width:12px;height:12px;border-radius:3px;display:inline-block}
+.sch-week-nav{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.sch-week-nav b{font-size:15px}
+.sch-week-nav button{padding:4px 10px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;font-size:12px;cursor:pointer}
+.sch-week-nav button:hover{background:#f1f5f9}</style>
 </head>
 <body>
 
@@ -114,6 +144,7 @@ tr.drag-over-bottom td{box-shadow:inset 0 -3px 0 0 #3b82f6}
     <button class="active" onclick="switchTab('classes')">班级管理</button>
     <button onclick="switchTab('students')">学员出勤</button>
     <button onclick="switchTab('stats')">班级排课</button>
+    <button onclick="switchTab('schedule')">课程表预览</button>
   </div>
 </div>
 
@@ -174,6 +205,27 @@ tr.drag-over-bottom td{box-shadow:inset 0 -3px 0 0 #3b82f6}
       <th style="text-align:left">班级</th><th>年前已上</th><th>3月排课</th><th>4月排课</th><th>5月排课</th><th>6月排课</th>
       <th>累计已上</th><th>阶段总课时</th><th>进度</th><th>状态</th>
     </tr></thead><tbody id="statsTbody"></tbody></table></div>
+  </div>
+</div>
+
+<!-- Tab 4: 课程表预览 -->
+<div class="section" id="sec-schedule">
+  <div class="card">
+    <h2>课程表一览
+      <button class="btn btn-gray btn-sm" onclick="exportSchedule()" style="margin-left:auto">📥 导出</button></h2>
+    <div class="sch-week-nav">
+      <button onclick="schWeekOffset(-1)">◀ 上周</button>
+      <b id="schWeekRange"></b>
+      <button onclick="schWeekOffset(1)">下周 ▶</button>
+      <button onclick="schWeekOffset(0)" style="margin-left:6px;font-size:10px">今天</button>
+    </div>
+    <div class="sch-legend">
+      <span><i class="sch-dot" style="background:#fca5a5;border:1px solid #f87171"></i> 已满员</span>
+      <span><i class="sch-dot" style="background:#86efac;border:1px solid #4ade80"></i> 已开课</span>
+      <span><i class="sch-dot" style="background:#93c5fd;border:1px solid #60a5fa"></i> 预报名</span>
+      <span><i class="sch-dot" style="background:#f1f5f9;border:1px solid #cbd5e1;color:#94a3b8"></i> 未开班</span>
+    </div>
+    <div style="overflow-x:auto"><table class="sch-grid" id="schTable"></table></div>
   </div>
 </div>
 
@@ -263,13 +315,14 @@ function getClassName(cid) {
 function switchTab(tab) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
-  const map = {classes:'sec-classes',students:'sec-students',stats:'sec-stats'};
-  const idx = {classes:0,students:1,stats:2};
+  const map = {classes:'sec-classes',students:'sec-students',stats:'sec-stats',schedule:'sec-schedule'};
+  const idx = {classes:0,students:1,stats:2,schedule:3};
   document.getElementById(map[tab]).classList.add('active');
   document.querySelectorAll('.tabs button')[idx[tab]].classList.add('active');
   if (tab==='classes') renderClasses();
   if (tab==='students') { fillStuClassFilter(); renderStudents(); }
   if (tab==='stats') renderClassProgress();
+  if (tab==='schedule') renderSchedule();
 }
 
 // ═══════════════════════════════════════
@@ -914,6 +967,181 @@ function exportStats() {
     ];
   });
   exportCSV(headers, rows, '班级排课进度_教务系统.csv');
+}
+
+// ═══════════════════════════════════════
+// Tab 4: 课程表预览
+// ═══════════════════════════════════════
+// 排课数据（根据实际排课表配置）
+const SCHEDULE_DATA = [
+  {classId:1, name:'K1001', phase:'K1',
+   sessions:[{day:3,period:'eve',start:'18:00',end:'19:00'},{day:6,period:'pm',start:'15:00',end:'16:30'}],
+   openDate:'2026-03-18', capacity:8},
+  {classId:2, name:'K1002', phase:'K1',
+   sessions:[{day:4,period:'pm',start:'16:45',end:'17:45'},{day:6,period:'pm',start:'16:40',end:'18:10'}],
+   openDate:'2026-03-20', capacity:8},
+  {classId:3, name:'K1003', phase:'K1',
+   sessions:[{day:0,period:'pm',start:'15:35',end:'17:05'}],
+   openDate:'2026-01-21', capacity:8},
+  {classId:7, name:'K1004', phase:'K1',
+   sessions:[{day:1,period:'eve',start:'18:00',end:'19:00'},{day:0,period:'pm',start:'14:00',end:'15:30'}],
+   openDate:'', capacity:8, statusOverride:'预报名'},
+  {classId:4, name:'K2001', phase:'K2',
+   sessions:[{day:4,period:'eve',start:'19:00',end:'20:30'},{day:6,period:'eve',start:'19:00',end:'20:30'}],
+   openDate:'2026-04-02', capacity:10},
+  {classId:5, name:'S1001', phase:'S',
+   sessions:[{day:3,period:'eve',start:'19:00',end:'20:30'},{day:0,period:'am',start:'10:30',end:'12:00'}],
+   openDate:'2026-03-12', capacity:10},
+  {classId:6, name:'S3001', phase:'S',
+   sessions:[{day:4,period:'eve',start:'18:00',end:'19:00'},{day:6,period:'am',start:'10:45',end:'12:15'}],
+   openDate:'2026-04-09', capacity:10}
+];
+
+let schWeekOffset = 0;
+const DAY_NAMES = ['周日','周一','周二','周三','周四','周五','周六'];
+const PERIODS = [{key:'am',label:'上午'},{key:'pm',label:'下午'},{key:'eve',label:'晚上'}];
+
+function getSchWeekStart(offset) {
+  const now = new Date();
+  // 获取本周一
+  const mon = new Date(now);
+  mon.setDate(now.getDate() - (now.getDay() || 7) + 1);
+  mon.setHours(0,0,0,0);
+  mon.setDate(mon.getDate() + offset * 7);
+  return mon;
+}
+
+function renderSchedule() {
+  const ws = getSchWeekStart(schWeekOffset);
+  // 更新周范围显示
+  const we = new Date(ws); we.setDate(we.getDate() + 6);
+  document.getElementById('schWeekRange').textContent =
+    ws.getFullYear() + '-' + String(ws.getMonth()+1).padStart(2,'0') + '-' + String(ws.getDate()).padStart(2,'0')
+    + ' ~ ' +
+    we.getFullYear() + '-' + String(we.getMonth()+1).padStart(2,'0') + '-' + String(we.getDate()).padStart(2,'0');
+
+  // 统计每个班级的学员数和剩余名额
+  const classStats = {};
+  _classes.forEach(c => {
+    const studs = _students.filter(s => s.class_id === c.id && s.status !== '毕业');
+    const active = SCHEDULE_DATA.find(s => s.classId === c.id);
+    const cap = active ? active.capacity : 8;
+    classStats[c.id] = {
+      count: studs.length,
+      remaining: Math.max(0, cap - studs.length),
+      status: active && active.statusOverride ? active.statusOverride :
+              studs.length >= cap ? '已满员' :
+              (c.m3||0)+(c.m4||0)+(c.m5||0)+(c.m6||0) > 0 ? '已开课' :
+              c.name.includes('未开班') ? '未开班' : '已开课'
+    };
+  });
+
+  // 构建表格
+  let h = '<thead><tr><th style="width:90px">教室</th>';
+  for (let d = 0; d < 7; d++) {
+    const dt = new Date(ws); dt.setDate(dt.getDate() + d);
+    const isToday = new Date().toDateString() === dt.toDateString();
+    h += '<th colspan="3" class="day-hd">' + DAY_NAMES[d] +
+      '<br><span style="font-weight:400;font-size:10px;color:'+(isToday?'#ef4444':'#94a3b8')+'">' +
+      (dt.getMonth()+1) + '/' + dt.getDate() + (isToday?' ← 今天':'') + '</span></th>';
+  }
+  h += '</tr><tr><th></th>'; // 角标为空
+  for (let d = 0; d < 7; d++) {
+    for (let p of PERIODS) {
+      h += '<th class="sub-hd">' + p.label + '</th>';
+    }
+  }
+  h += '</tr></thead><tbody>';
+
+  // 按阶段分组
+  const phases = {};
+  SCHEDULE_DATA.forEach(sch => {
+    if (!phases[sch.phase]) phases[sch.phase] = [];
+    phases[sch.phase].push(sch);
+  });
+  const phaseOrder = ['K1','K2','S'];
+  const phaseLabels = {'K1':'K1阶段','K2':'K2阶段','S':'S阶段'};
+
+  phaseOrder.forEach(ph => {
+    const items = phases[ph] || [];
+    if (!items.length) return;
+    // 阶段标题行
+    h += '<tr class="phase-row"><td colspan="22" class="phase-label">' + (phaseLabels[ph]||ph) + '</td></tr>';
+    items.forEach(sch => {
+      const stats = classStats[sch.classId] || {count:0,remaining:sch.capacity,status:'未开班'};
+      const cls = _classes.find(c => c.id === sch.classId);
+      h += '<tr><td class="cls-label"><span class="tag tag-' + (sch.phase||'k1').toLowerCase() + '">' +
+        cls.name.replace(/\(.+\)/,'') + '</span> ' + cls.name.match(/\((.+)\)/)?.[1]?.replace('未开班','') + '</td>';
+
+      for (let d = 0; d < 7; d++) {
+        for (let p of PERIODS) {
+          const sess = sch.sessions.find(s => s.day === d && s.period === p.key);
+          h += '<td class="sch-cell">';
+          if (sess) {
+            const cssClass = stats.status === '已满员' ? 'sch-full' :
+                              stats.status === '预报名' ? 'sch-pre' :
+                              stats.status === '已开课' ? 'sch-opened' : 'sch-notopened';
+            h += '<div class="sch-block ' + cssClass + '" onmouseenter="showSchTip(this)" onmouseleave="hideSchTip(this)">' +
+              '<b>' + cls.name.replace(/\(.+\)/,'') + '</b>' +
+              '<span class="sch-time">' + sess.start + '-' + sess.end + '</span>' +
+              '<div class="sch-tip"><h4>' + cls.name + '</h4>' +
+                '<div class="sch-tip-row"><span class="sch-tip-lbl">班级</span><span class="sch-tip-val">' + cls.name + '</span></div>' +
+                '<div class="sch-tip-row"><span class="sch-tip-lbl">阶段</span><span class="sch-tip-val">' + sch.phase + '阶段</span></div>' +
+                '<div class="sch-tip-row"><span class="sch-tip-lbl">开课日期</span><span class="sch-tip-val">' + (sch.openDate||'待定') + '</span></div>' +
+                '<div class="sch-tip-row"><span class="sch-tip-lbl">上课时间</span><span class="sch-tip-val">' + sess.start + '</span></div>' +
+                '<div class="sch-tip-row"><span class="sch-tip-lbl">下课时间</span><span class="sch-tip-val">' + sess.end + '</span></div>' +
+                '<div class="sch-tip-row"><span class="sch-tip-lbl">学员数</span><span class="sch-tip-val">' + stats.count + ' 人</span></div>' +
+                '<div class="sch-tip-row"><span class="sch-tip-lbl">剩余名额</span><span class="sch-tip-val" style="color:'+(stats.remaining>0?'#4ade80':'#f87171')+'">' + stats.remaining + ' 人</span></div>' +
+                '<div class="sch-tip-row"><span class="sch-tip-lbl">状态</span><span class="sch-tip-val">' + stats.status + '</span></div>' +
+              '</div></div>';
+          }
+          h += '</td>';
+        }
+      }
+      h += '</tr>';
+    });
+  });
+
+  // 处理没有在 SCHEDULE_DATA 中配置的班级（如 K1004 未开班等）
+  const configuredIds = SCHEDULE_DATA.map(s => s.classId);
+  _classes.filter(c => !configuredIds.includes(c.id)).forEach(c => {
+    const studs = _students.filter(s => s.class_id === c.id && s.status !== '毕业');
+    h += '<tr><td class="cls-label"><span class="tag tag-' + (c.phase||'k1').toLowerCase() + '">' + (c.phase||'') + '</span> ' + c.name + '</td>';
+    for (let d = 0; d < 7; d++) {
+      for (let p of PERIODS) { h += '<td class="sch-cell"></td>'; }
+    }
+    h += '</tr>';
+  });
+
+  h += '</tbody>';
+  document.getElementById('schTable').innerHTML = h;
+}
+
+function showSchTip(el) { /* CSS hover already handles this */ }
+function hideSchTip(el) { /* CSS handles */ }
+
+function schWeekOffset(delta) {
+  schWeekOffset += delta;
+  renderSchedule();
+}
+
+function exportSchedule() {
+  const headers = ['班级','阶段','星期','时段','开始时间','结束时间','开课日期','学员数','剩余名额','状态'];
+  const rows = [];
+  const ws = getSchWeekStart(schWeekOffset);
+  SCHEDULE_DATA.forEach(sch => {
+    const cls = _classes.find(c => c.id === sch.classId);
+    const studs = _students.filter(s => s.class_id === sch.classId && s.status !== '毕业');
+    const rem = Math.max(0, sch.capacity - studs.length);
+    const status = sch.statusOverride ||
+                   (studs.length >= sch.capacity ? '已满员' :
+                    (cls&&(cls.m3||0)+(cls.m4||0)+(cls.m5||0)+(cls.m6||0)>0) ? '已开课' : '未开班');
+    sch.sessions.forEach(sess => {
+      rows.push([cls.name, sch.phase + '阶段', DAY_NAMES[sess.day], PERIODS[p=>p.key===sess.period]?.label||'',
+        sess.start, sess.end, sch.openDate||'待定', ''+studs.length, ''+rem, status]);
+    });
+  });
+  exportCSV(headers, rows, '课程表预览_' + new Date().toISOString().slice(0,10) + '.csv');
 }
 
 // ═══════════════════════════════════════
