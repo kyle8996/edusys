@@ -974,31 +974,31 @@ function exportStats() {
 // ═══════════════════════════════════════
 // 排课数据（根据实际排课表配置）
 const SCHEDULE_DATA = [
-  {classId:1, name:'K1001', phase:'K1',
-   sessions:[{day:3,period:'eve',start:'18:00',end:'19:00'},{day:6,period:'pm',start:'15:00',end:'16:30'}],
+  {classId:1, name:'K1001', phase:'K1', teacher:'Dora',
+   sessions:[{day:2,period:'eve',start:'18:00',end:'19:00'},{day:5,period:'pm',start:'15:00',end:'16:30'}],
    openDate:'2026-03-18', capacity:8},
-  {classId:2, name:'K1002', phase:'K1',
-   sessions:[{day:4,period:'pm',start:'16:45',end:'17:45'},{day:6,period:'pm',start:'16:40',end:'18:10'}],
+  {classId:2, name:'K1002', phase:'K1', teacher:'Dora',
+   sessions:[{day:3,period:'pm',start:'16:45',end:'17:45'},{day:5,period:'pm',start:'16:40',end:'18:10'}],
    openDate:'2026-03-20', capacity:8},
-  {classId:3, name:'K1003', phase:'K1',
-   sessions:[{day:0,period:'pm',start:'15:35',end:'17:05'}],
+  {classId:3, name:'K1003', phase:'K1', teacher:'Dora',
+   sessions:[{day:6,period:'pm',start:'15:35',end:'17:05'}],
    openDate:'2026-01-21', capacity:8},
-  {classId:7, name:'K1004', phase:'K1',
-   sessions:[{day:1,period:'eve',start:'18:00',end:'19:00'},{day:0,period:'pm',start:'14:00',end:'15:30'}],
+  {classId:7, name:'K1004', phase:'K1', teacher:'Dora',
+   sessions:[{day:0,period:'eve',start:'18:00',end:'19:00'},{day:6,period:'pm',start:'14:00',end:'15:30'}],
    openDate:'', capacity:8, statusOverride:'预报名'},
-  {classId:4, name:'K2001', phase:'K2',
-   sessions:[{day:4,period:'eve',start:'19:00',end:'20:30'},{day:6,period:'eve',start:'19:00',end:'20:30'}],
+  {classId:4, name:'K2001', phase:'K2', teacher:'Dora',
+   sessions:[{day:3,period:'eve',start:'19:00',end:'20:30'},{day:5,period:'eve',start:'19:00',end:'20:30'}],
    openDate:'2026-04-02', capacity:10},
-  {classId:5, name:'S1001', phase:'S',
-   sessions:[{day:3,period:'eve',start:'19:00',end:'20:30'},{day:0,period:'am',start:'10:30',end:'12:00'}],
+  {classId:5, name:'S1001', phase:'S', teacher:'Dora',
+   sessions:[{day:2,period:'eve',start:'19:00',end:'20:30'},{day:6,period:'am',start:'10:30',end:'12:00'}],
    openDate:'2026-03-12', capacity:10},
-  {classId:6, name:'S3001', phase:'S',
-   sessions:[{day:4,period:'eve',start:'18:00',end:'19:00'},{day:6,period:'am',start:'10:45',end:'12:15'}],
+  {classId:6, name:'S3001', phase:'S', teacher:'Dora',
+   sessions:[{day:3,period:'eve',start:'18:00',end:'19:00'},{day:5,period:'am',start:'10:45',end:'12:15'}],
    openDate:'2026-04-09', capacity:10}
 ];
 
 let _schWeekOffset = 0;
-const DAY_NAMES = ['周日','周一','周二','周三','周四','周五','周六'];
+const DAY_NAMES = ['周一','周二','周三','周四','周五','周六','周日'];
 const PERIODS = [{key:'am',label:'上午'},{key:'pm',label:'下午'},{key:'eve',label:'晚上'}];
 
 function getSchWeekStart(offset) {
@@ -1037,7 +1037,7 @@ function renderSchedule() {
   });
 
   // 构建表格
-  let h = '<thead><tr><th style="width:90px">教室</th>';
+  let h = '<thead><tr><th style="width:90px">带班老师</th>';
   for (let d = 0; d < 7; d++) {
     const dt = new Date(ws); dt.setDate(dt.getDate() + d);
     const isToday = new Date().toDateString() === dt.toDateString();
@@ -1070,8 +1070,8 @@ function renderSchedule() {
     items.forEach(sch => {
       const stats = classStats[sch.classId] || {count:0,remaining:sch.capacity,status:'未开班'};
       const cls = _classes.find(c => c.id === sch.classId);
-      h += '<tr><td class="cls-label"><span class="tag tag-' + (sch.phase||'k1').toLowerCase() + '">' +
-        cls.name.replace(/\(.+\)/,'') + '</span> ' + cls.name.match(/\((.+)\)/)?.[1]?.replace('未开班','') + '</td>';
+      h += '<tr><td class="cls-label"><b>' + (sch.teacher||'') + '</b><br><span class="tag tag-' + (sch.phase||'k1').toLowerCase() + '">' +
+        cls.name.replace(/\(.+\)/,'') + '</span> ' + (cls.name.match(/\((.+)\)/)?.[1]?.replace('未开班','')||'') + '</td>';
 
       for (let d = 0; d < 7; d++) {
         for (let p of PERIODS) {
@@ -1085,7 +1085,7 @@ function renderSchedule() {
               '<b>' + cls.name.replace(/\(.+\)/,'') + '</b>' +
               '<span class="sch-time">' + sess.start + '-' + sess.end + '</span>' +
               '<div class="sch-tip"><h4>' + cls.name + '</h4>' +
-                '<div class="sch-tip-row"><span class="sch-tip-lbl">班级</span><span class="sch-tip-val">' + cls.name + '</span></div>' +
+                '<div class="sch-tip-row"><span class="sch-tip-lbl">带班老师</span><span class="sch-tip-val">' + (sch.teacher||'—') + '</span></div>' +
                 '<div class="sch-tip-row"><span class="sch-tip-lbl">阶段</span><span class="sch-tip-val">' + sch.phase + '阶段</span></div>' +
                 '<div class="sch-tip-row"><span class="sch-tip-lbl">开课日期</span><span class="sch-tip-val">' + (sch.openDate||'待定') + '</span></div>' +
                 '<div class="sch-tip-row"><span class="sch-tip-lbl">上课时间</span><span class="sch-tip-val">' + sess.start + '</span></div>' +
@@ -1126,7 +1126,7 @@ function schWeekOffset(delta) {
 }
 
 function exportSchedule() {
-  const headers = ['班级','阶段','星期','时段','开始时间','结束时间','开课日期','学员数','剩余名额','状态'];
+  const headers = ['带班老师','班级','阶段','星期','时段','开始时间','结束时间','开课日期','学员数','剩余名额','状态'];
   const rows = [];
   const ws = getSchWeekStart(_schWeekOffset);
   SCHEDULE_DATA.forEach(sch => {
@@ -1137,7 +1137,7 @@ function exportSchedule() {
                    (studs.length >= sch.capacity ? '已满员' :
                     (cls&&(cls.m3||0)+(cls.m4||0)+(cls.m5||0)+(cls.m6||0)>0) ? '已开课' : '未开班');
     sch.sessions.forEach(sess => {
-      rows.push([cls.name, sch.phase + '阶段', DAY_NAMES[sess.day], PERIODS.find(p=>p.key===sess.period)?.label||'',
+      rows.push([sch.teacher||'', cls.name, sch.phase + '阶段', DAY_NAMES[sess.day], PERIODS.find(p=>p.key===sess.period)?.label||'',
         sess.start, sess.end, sch.openDate||'待定', ''+studs.length, ''+rem, status]);
     });
   });
