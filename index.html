@@ -1137,7 +1137,7 @@ function exportSchedule() {
                    (studs.length >= sch.capacity ? '已满员' :
                     (cls&&(cls.m3||0)+(cls.m4||0)+(cls.m5||0)+(cls.m6||0)>0) ? '已开课' : '未开班');
     sch.sessions.forEach(sess => {
-      rows.push([cls.name, sch.phase + '阶段', DAY_NAMES[sess.day], PERIODS[p=>p.key===sess.period]?.label||'',
+      rows.push([cls.name, sch.phase + '阶段', DAY_NAMES[sess.day], PERIODS.find(p=>p.key===sess.period)?.label||'',
         sess.start, sess.end, sch.openDate||'待定', ''+studs.length, ''+rem, status]);
     });
   });
