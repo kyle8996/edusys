@@ -122,6 +122,7 @@ tr.drag-over-bottom td{box-shadow:inset 0 -3px 0 0 #3b82f6}
     <input type="password" id="loginPwd" placeholder="输入密码" onkeydown="if(event.key==='Enter')doLogin()" autofocus>
     <div class="err-msg" id="loginErr">密码错误，请重试</div>
     <button class="btn-login" onclick="doLogin()">登 录</button>
+    <div id="globalErr" style="display:none;margin-top:12px;padding:10px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;color:#dc2626;font-size:12px"></div>
   </div>
 </div>
 
@@ -273,12 +274,32 @@ tr.drag-over-bottom td{box-shadow:inset 0 -3px 0 0 #3b82f6}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
+// 全局错误捕获：防止白屏
+window.onerror = function(msg, url, line, col, err) {
+  var d = document.getElementById('loginOverlay');
+  if (d) d.style.display = 'flex';
+  var errDiv = document.getElementById('globalErr');
+  if (errDiv) {
+    errDiv.style.display = 'block';
+    errDiv.textContent = '页面加载出错: ' + (msg || '未知错误');
+  }
+  return false;
+};
 // ═══════════════════════════════════════
 // Supabase 云数据库初始化
 // ═══════════════════════════════════════
 const SB_URL = 'https://chasxggorljjqqmficnh.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNoYXN4Z2dvcmxqanFxbWZpY25oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1MDI1NzIsImV4cCI6MjA5NzA3ODU3Mn0.E0xlNCX_jFn8X9LheAR3jFHokzWSkZlXkBDReqTvL6c';
-const sb = window.supabase.createClient(SB_URL, SB_KEY);
+let sb = null;
+try {
+  if (window.supabase && window.supabase.createClient) {
+    sb = window.supabase.createClient(SB_URL, SB_KEY);
+  } else {
+    throw new Error('Supabase SDK 未加载（CDN 可能被阻断）');
+  }
+} catch(e) {
+  console.error('Supabase 初始化失败:', e.message);
+}
 
 // 数据缓存
 let _classes = [], _students = [], _attendance = [];
@@ -288,6 +309,11 @@ async function syncStatus(msg) {
 }
 
 async function loadAll() {
+  if (!sb) {
+    syncStatus('⚠️ 云数据库未连接');
+    showToast('云数据库连接失败，请检查网络后刷新页面', false);
+    return;
+  }
   syncStatus('加载中...');
   const [cr, sr, ar] = await Promise.all([
     sb.from('classes').select('*').order('id'),
