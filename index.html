@@ -1228,13 +1228,23 @@ function renderSchedule() {
   });
 
   // 对于每个格子，如果只有一个班级，才启用 rowspan；多个班级则 span=1 并列显示
+  // 注意：即使只有一个班级，如果其 rowspan 范围内覆盖了其他班级的起始格，也要缩短 rowspan 避免吞掉其他班级
   for (let d = 0; d < 7; d++) {
     Object.keys(occupied[d]).forEach(si => {
       const entries = occupied[d][si];
+      const siNum = parseInt(si);
       if (entries.length === 1) {
-        // 单班级：启用 rowspan，标记后续格子
+        // 单班级：检查 rowspan 是否会覆盖其他班级的起始格
+        let actualSpan = entries[0].span;
         for (let s = 1; s < entries[0].span; s++) {
-          spanned[d][parseInt(si) + s] = true;
+          if (occupied[d][siNum + s] && occupied[d][siNum + s].length > 0) {
+            actualSpan = s; // 缩短 rowspan，不要覆盖其他班级
+            break;
+          }
+        }
+        entries[0].span = actualSpan;
+        for (let s = 1; s < actualSpan; s++) {
+          spanned[d][siNum + s] = true;
         }
       } else {
         // 多班级：不跨行，每个班级 span 改为 1
