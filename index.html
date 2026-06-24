@@ -1126,7 +1126,7 @@ const SCHEDULE_DATA = [
    sessions:[{day:3,period:'eve',start:'19:00',end:'20:30'},{day:5,period:'eve',start:'19:00',end:'20:30'}],
    openDate:'2026-04-02', capacity:10},
   {classId:5, name:'S1001', phase:'S', teacher:'Dora',
-   sessions:[{day:2,period:'eve',start:'19:00',end:'20:30'},{day:6,period:'am',start:'10:30',end:'12:00'}],
+   sessions:[{day:2,period:'eve',start:'19:30',end:'20:30'},{day:6,period:'am',start:'10:30',end:'12:00'}],
    openDate:'2026-03-12', capacity:10},
   {classId:6, name:'S3001', phase:'S', teacher:'Dora',
    sessions:[{day:3,period:'eve',start:'18:00',end:'19:00'},{day:5,period:'am',start:'10:45',end:'12:15'}],
@@ -1464,7 +1464,7 @@ const LOGIN_PWD = 'DK0308';
 
 // 加载用户自定义排课数据（localStorage 持久化）
 // SCHEDULE_VERSION 2 = day 约定 0=周一（旧版用 JS Date.getDay 0=周日，需迁移）
-const SCHEDULE_VERSION = 5;
+const SCHEDULE_VERSION = 6;
 (function() {
   try {
     const savedVer = localStorage.getItem('edusys_schedule_ver') || '1';
