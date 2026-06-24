@@ -1283,9 +1283,9 @@ function renderSchedule() {
         const cell = entries[0];
         h += '<td class="sch-cell" rowspan="' + cell.span + '">' +
           '<div class="sch-block ' + cell.cssClass + '" onmouseenter="showSchTip(this)" onmouseleave="hideSchTip(this)">' +
-            '<b>' + cell.displayName + '</b>' +
+            '<b>' + cell.displayName + '</b> <span style="font-size:8px;opacity:0.7;font-weight:400">' + (cell.sch.teacher||'') + '</span>' +
             '<span class="sch-time">' + cell.sess.start + '-' + cell.sess.end + '</span>' +
-            '<div class="sch-tip"><h4>' + cell.displayName + '</h4>' +
+            '<div class="sch-tip"><h4>' + cell.displayName + ' ' + (cell.sch.teacher||'') + '</h4>' +
               '<div class="sch-tip-row"><span class="sch-tip-lbl">带班老师</span><span class="sch-tip-val">' + (cell.sch.teacher||'—') + '</span></div>' +
               '<div class="sch-tip-row"><span class="sch-tip-lbl">阶段</span><span class="sch-tip-val">' + cell.sch.phase + '阶段</span></div>' +
               '<div class="sch-tip-row"><span class="sch-tip-lbl">星期</span><span class="sch-tip-val">' + DAY_NAMES[d] + '</span></div>' +
@@ -1300,9 +1300,9 @@ function renderSchedule() {
         h += '<td class="sch-cell" style="padding:0;">';
         entries.forEach(cell => {
           h += '<div class="sch-block ' + cell.cssClass + '" style="margin:1px;height:auto;min-height:18px;" onmouseenter="showSchTip(this)" onmouseleave="hideSchTip(this)">' +
-            '<b>' + cell.displayName + '</b>' +
+            '<b>' + cell.displayName + '</b> <span style="font-size:8px;opacity:0.7;font-weight:400">' + (cell.sch.teacher||'') + '</span>' +
             '<span class="sch-time">' + cell.sess.start + '-' + cell.sess.end + '</span>' +
-            '<div class="sch-tip"><h4>' + cell.displayName + '</h4>' +
+            '<div class="sch-tip"><h4>' + cell.displayName + ' ' + (cell.sch.teacher||'') + '</h4>' +
               '<div class="sch-tip-row"><span class="sch-tip-lbl">带班老师</span><span class="sch-tip-val">' + (cell.sch.teacher||'—') + '</span></div>' +
               '<div class="sch-tip-row"><span class="sch-tip-lbl">阶段</span><span class="sch-tip-val">' + cell.sch.phase + '阶段</span></div>' +
               '<div class="sch-tip-row"><span class="sch-tip-lbl">星期</span><span class="sch-tip-val">' + DAY_NAMES[d] + '</span></div>' +
