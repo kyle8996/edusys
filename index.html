@@ -1120,7 +1120,13 @@ const SCHEDULE_DATA = [
    openDate:'2026-03-12', capacity:10},
   {classId:6, name:'S3001', phase:'S', teacher:'Dora',
    sessions:[{day:2,period:'eve',start:'18:00',end:'19:00'},{day:4,period:'am',start:'10:45',end:'12:15'}],
-   openDate:'2026-04-09', capacity:10}
+   openDate:'2026-04-09', capacity:10},
+  {classId:8, name:'K2002', phase:'K2', teacher:'Cindy',
+   sessions:[{day:1,period:'eve',start:'19:00',end:'20:30'},{day:5,period:'pm',start:'15:40',end:'17:10'}],
+   openDate:'', capacity:8, statusOverride:'未开课'},
+  {classId:9, name:'K1005', phase:'K1', teacher:'Cindy',
+   sessions:[{day:1,period:'eve',start:'18:00',end:'19:00'},{day:5,period:'am',start:'10:40',end:'12:10'}],
+   openDate:'', capacity:8, statusOverride:'未开课'}
 ];
 
 let _schWeekOffset = 0;
@@ -1436,7 +1442,7 @@ const LOGIN_PWD = 'DK0308';
 
 // 加载用户自定义排课数据（localStorage 持久化）
 // SCHEDULE_VERSION 2 = day 约定 0=周一（旧版用 JS Date.getDay 0=周日，需迁移）
-const SCHEDULE_VERSION = 2;
+const SCHEDULE_VERSION = 3;
 (function() {
   try {
     const savedVer = localStorage.getItem('edusys_schedule_ver') || '1';
