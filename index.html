@@ -391,7 +391,13 @@ function renderClasses() {
     '<div class="summary-item sc-grad"><div class="num">' + gradStu.length + '</div><div class="lbl">已毕业</div></div>';
 
   let html = '';
-  _classes.forEach(c => {
+  const phaseOrder = {'K1':0,'K2':1,'S':2,'暑假':3};
+  const sortedClasses = [..._classes].sort((a,b) => {
+    const pa = phaseOrder[a.phase] ?? 99;
+    const pb = phaseOrder[b.phase] ?? 99;
+    return pa - pb;
+  });
+  sortedClasses.forEach(c => {
     const phase = c.phase || '';
     const sch = SCHEDULE_DATA.find(s => s.classId === c.id);
     const teacher = sch ? (sch.teacher||'—') : '—';
