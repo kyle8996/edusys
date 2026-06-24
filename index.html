@@ -1100,33 +1100,36 @@ function exportStats() {
 // ═══════════════════════════════════════
 // 排课数据（根据实际排课表配置）
 const SCHEDULE_DATA = [
+  // Dora 班级
   {classId:1, name:'K1001', phase:'K1', teacher:'Dora',
-   sessions:[{day:1,period:'eve',start:'18:00',end:'19:00'},{day:4,period:'pm',start:'15:00',end:'16:30'}],
+   sessions:[{day:2,period:'eve',start:'18:00',end:'19:00'},{day:5,period:'pm',start:'15:00',end:'16:30'}],
    openDate:'2026-03-18', capacity:8},
   {classId:2, name:'K1002', phase:'K1', teacher:'Dora',
-   sessions:[{day:2,period:'pm',start:'16:45',end:'17:45'},{day:4,period:'pm',start:'16:40',end:'18:10'}],
+   sessions:[{day:3,period:'pm',start:'16:45',end:'17:45'},{day:5,period:'pm',start:'16:40',end:'18:10'}],
    openDate:'2026-03-20', capacity:8},
   {classId:3, name:'K1003', phase:'K1', teacher:'Dora',
-   sessions:[{day:5,period:'pm',start:'15:35',end:'17:05'}],
+   sessions:[{day:6,period:'pm',start:'15:35',end:'17:05'}],
    openDate:'2026-01-21', capacity:8},
   {classId:7, name:'K1004', phase:'K1', teacher:'Dora',
-   sessions:[{day:6,period:'eve',start:'18:00',end:'19:00'},{day:5,period:'pm',start:'14:00',end:'15:30'}],
+   sessions:[{day:4,period:'eve',start:'18:00',end:'19:00'},{day:6,period:'pm',start:'14:00',end:'15:30'}],
    openDate:'', capacity:8, statusOverride:'未开课'},
   {classId:4, name:'K2001', phase:'K2', teacher:'Dora',
-   sessions:[{day:2,period:'eve',start:'19:00',end:'20:30'},{day:4,period:'eve',start:'19:00',end:'20:30'}],
+   sessions:[{day:3,period:'eve',start:'19:00',end:'20:30'},{day:5,period:'eve',start:'19:00',end:'20:30'}],
    openDate:'2026-04-02', capacity:10},
   {classId:5, name:'S1001', phase:'S', teacher:'Dora',
-   sessions:[{day:1,period:'eve',start:'19:00',end:'20:30'},{day:5,period:'am',start:'10:30',end:'12:00'}],
+   sessions:[{day:2,period:'eve',start:'19:00',end:'20:30'},{day:6,period:'am',start:'10:30',end:'12:00'}],
    openDate:'2026-03-12', capacity:10},
   {classId:6, name:'S3001', phase:'S', teacher:'Dora',
-   sessions:[{day:2,period:'eve',start:'18:00',end:'19:00'},{day:4,period:'am',start:'10:45',end:'12:15'}],
+   sessions:[{day:3,period:'eve',start:'18:00',end:'19:00'},{day:5,period:'am',start:'10:45',end:'12:15'}],
    openDate:'2026-04-09', capacity:10},
-  {classId:8, name:'K2002', phase:'K2', teacher:'Cindy',
-   sessions:[{day:1,period:'eve',start:'19:00',end:'20:30'},{day:5,period:'pm',start:'15:40',end:'17:10'}],
-   openDate:'', capacity:8, statusOverride:'未开课'},
+  // Cindy 班级
   {classId:9, name:'K1005', phase:'K1', teacher:'Cindy',
    sessions:[{day:1,period:'eve',start:'18:00',end:'19:00'},{day:5,period:'am',start:'10:40',end:'12:10'}],
+   openDate:'', capacity:8, statusOverride:'未开课'},
+  {classId:8, name:'K2002', phase:'K2', teacher:'Cindy',
+   sessions:[{day:1,period:'eve',start:'19:00',end:'20:30'},{day:5,period:'pm',start:'15:40',end:'17:10'}],
    openDate:'', capacity:8, statusOverride:'未开课'}
+  // SH01 寒假班不显示在课程表预览中
 ];
 
 let _schWeekOffset = 0;
@@ -1442,7 +1445,7 @@ const LOGIN_PWD = 'DK0308';
 
 // 加载用户自定义排课数据（localStorage 持久化）
 // SCHEDULE_VERSION 2 = day 约定 0=周一（旧版用 JS Date.getDay 0=周日，需迁移）
-const SCHEDULE_VERSION = 3;
+const SCHEDULE_VERSION = 4;
 (function() {
   try {
     const savedVer = localStorage.getItem('edusys_schedule_ver') || '1';
