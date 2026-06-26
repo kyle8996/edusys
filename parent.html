@@ -106,6 +106,10 @@ async function loadData() {
       sb.from('classes').select('*'),
       sb.from('attendance').select('*')
     ]);
+    if (s1.error || s2.error || s3.error) {
+      document.getElementById('app').innerHTML = '<div class="empty-state">数据加载异常：' + (s1.error?.message || s2.error?.message || s3.error?.message) + '</div>';
+      return;
+    }
     _students = s1.data || [];
     _classes = s2.data || [];
     _attendance = s3.data || [];
