@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>DK邻里 · 课时查询</title>
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:#f8f9fb;color:#1e293b;min-height:100vh}
+.container{max-width:420px;margin:0 auto;padding:16px}
+.header{text-align:center;padding:20px 0}
+.header .logo{font-size:24px;font-weight:800;color:#b45309;letter-spacing:1px}
+.header .sub{color:#64748b;font-size:13px;margin-top:4px}
+.card{background:#fff;border-radius:12px;padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.card-title{font-size:14px;font-weight:600;color:#64748b;margin-bottom:10px}
+.search-box{display:flex;gap:8px;margin-bottom:8px}
+.search-box input{flex:1;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;outline:none}
+.search-box input:focus{border-color:#f59e0b}
+.search-box button{padding:10px 16px;background:#f59e0b;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer}
+.search-box button:active{opacity:.9}
+.result-list{margin-top:8px}
+.result-item{padding:10px 12px;background:#f8fafc;border-radius:8px;margin-bottom:6px;cursor:pointer;display:flex;justify-content:space-between;align-items:center}
+.result-item:hover{background:#f1f5f9}
+.result-item .name{font-weight:600;color:#1e293b}
+.result-item .class-name{font-size:12px;color:#64748b}
+
+/* 学员信息大卡片 */
+.student-header{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.avatar{width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#f59e0b,#d97706);display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px;font-weight:700}
+.student-info h2{font-size:20px;font-weight:700;color:#1e293b}
+.student-info .tag{font-size:12px;color:#64748b;margin-top:2px}
+
+/* 课时统计 */
+.stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+.stat-item{text-align:center;padding:14px 8px;background:#f8fafc;border-radius:10px}
+.stat-item .num{font-size:24px;font-weight:700;color:#1e293b}
+.stat-item .label{font-size:12px;color:#64748b;margin-top:2px}
+.stat-item.used .num{color:#059669}
+.stat-item.remain .num{color:#2563eb}
+.stat-item.warn .num{color:#dc2626}
+
+/* 续费提醒 */
+.alert-box{background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:14px;text-align:center;margin-bottom:16px}
+.alert-box .alert-icon{font-size:24px;margin-bottom:4px}
+.alert-box .alert-text{font-size:15px;font-weight:700;color:#b91c1c}
+.alert-box .alert-sub{font-size:12px;color:#ef4444;margin-top:4px}
+
+/* 进度条 */
+.progress-section{margin-bottom:16px}
+.progress-bar-bg{height:12px;background:#e2e8f0;border-radius:6px;overflow:hidden;margin-top:6px}
+.progress-bar-fill{height:100%;background:linear-gradient(90deg,#f59e0b,#d97706);border-radius:6px;transition:width .5s ease}
+.progress-text{display:flex;justify-content:space-between;font-size:12px;color:#64748b;margin-top:4px}
+
+/* 月度明细 */
+.month-table{width:100%;border-collapse:collapse;font-size:13px}
+.month-table th{text-align:left;padding:8px 4px;color:#64748b;font-weight:500;border-bottom:1px solid #e2e8f0}
+.month-table td{padding:8px 4px;border-bottom:1px solid #f1f5f9}
+.month-table td:last-child{text-align:right;font-weight:600;color:#059669}
+.month-table tr:last-child td{border-bottom:none}
+
+.empty-state{text-align:center;padding:40px 20px;color:#94a3b8;font-size:14px}
+.loading{text-align:center;padding:40px;color:#64748b}
+.back-btn{display:inline-block;padding:8px 16px;background:#f1f5f9;color:#475569;border-radius:8px;font-size:13px;text-decoration:none;margin-top:8px;cursor:pointer}
+.back-btn:hover{background:#e2e8f0}
+</style>
+</head>
+<body>
+<div class="container" id="app">
+  <div class="loading">⏳ 加载中...</div>
+</div>
+
+<script>
+// ═══════════════════════════════════════
+// Supabase 配置（与教务/销售系统共用）
+// ═══════════════════════════════════════
+const SUPABASE_URL = 'https://chasxggorljjqqmficnh.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNoYXN4Z2dvcmxqanFtZmljbmgiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTc0NDEyMzY5MCwiZXhwIjoyMDU5Njk5NjkwfQ.Qu7ex1LNDymhF8tHV_7Nd2CbKbtQuw0qwv1MRa-EpKw';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let _students = [], _classes = [], _attendance = [];
+
+// ═══════════════════════════════════════
+// 页面初始化
+// ═══════════════════════════════════════
+async function init() {
+  const params = new URLSearchParams(location.search);
+  const studentId = params.get('studentId');
+  const name = params.get('name');
+
+  await loadData();
+
+  if (studentId) {
+    showStudent(parseInt(studentId));
+  } else if (name) {
+    searchByName(name);
+  } else {
+    showSearch();
+  }
+}
+
+async function loadData() {
+  try {
+    const [s1, s2, s3] = await Promise.all([
+      sb.from('students').select('*'),
+      sb.from('classes').select('*'),
+      sb.from('attendance').select('*')
+    ]);
+    _students = s1.data || [];
+    _classes = s2.data || [];
+    _attendance = s3.data || [];
+  } catch (e) {
+    document.getElementById('app').innerHTML = '<div class="empty-state">数据加载失败，请检查网络</div>';
+  }
+}
+
+// ═══════════════════════════════════════
+// 搜索页面
+// ═══════════════════════════════════════
+function showSearch() {
+  const app = document.getElementById('app');
+  app.innerHTML = '<div class="header">' +
+    '<div class="logo">🌟 DK邻里</div>' +
+    '<div class="sub">少儿英语 · 课时查询</div>' +
+  '</div>' +
+  '<div class="card">' +
+    '<div class="card-title">请输入孩子姓名查询</div>' +
+    '<div class="search-box">' +
+      '<input type="text" id="searchInput" placeholder="例如：黄梓铭" onkeydown="if(event.key===\'Enter\')doSearch()">' +
+      '<button onclick="doSearch()">查询</button>' +
+    '</div>' +
+    '<div id="searchResult" class="result-list"></div>' +
+  '</div>';
+}
+
+function doSearch() {
+  const val = document.getElementById('searchInput').value.trim();
+  if (!val) return;
+  searchByName(val);
+}
+
+function searchByName(name) {
+  const list = _students.filter(s => s.name && s.name.includes(name));
+  if (list.length === 0) {
+    document.getElementById('searchResult').innerHTML = '<div class="empty-state">未找到学员「' + name + '」</div>';
+    return;
+  }
+  if (list.length === 1) {
+    showStudent(list[0].id);
+    return;
+  }
+  // 多个同名
+  let html = '';
+  list.forEach(s => {
+    const cls = _classes.find(c => c.id === s.class_id);
+    html += '<div class="result-item" onclick="showStudent(' + s.id + ')">' +
+      '<span class="name">' + s.name + '</span>' +
+      '<span class="class-name">' + (cls ? cls.name : '') + ' · 剩余' + (s.remaining_hours||0) + '课时</span>' +
+    '</div>';
+  });
+  document.getElementById('searchResult').innerHTML = html;
+}
+
+// ═══════════════════════════════════════
+// 学员详情展示
+// ═══════════════════════════════════════
+function showStudent(studentId) {
+  const student = _students.find(s => s.id === studentId);
+  if (!student) {
+    document.getElementById('app').innerHTML = '<div class="empty-state">未找到学员信息</div><a class="back-btn" onclick="showSearch()">返回查询</a>';
+    return;
+  }
+  const cls = _classes.find(c => c.id === student.class_id);
+  const clsName = cls ? cls.name : '';
+  const phase = cls ? cls.phase : '';
+
+  // 已上课时 = attendance 汇总
+  const att = _attendance.filter(a => a.student_id === studentId);
+  const usedHours = att.reduce((sum, a) => sum + (parseFloat(a.hours) || 0), 0);
+  const remainHours = parseFloat(student.remaining_hours) || 0;
+  const paidHours = parseFloat(student.paid_hours) || 0;
+
+  // 月度明细
+  const monthRows = att.sort((a,b)=>a.year!==b.year?a.year-b.year:a.month-b.month).map(a => {
+    return '<tr><td>' + a.year + '年' + a.month + '月</td><td>' + a.hours + ' 课时</td></tr>';
+  }).join('');
+
+  // 班级总进度（所有学员的已上课时平均？不，这里用班级total_hours作为总课时，计算本学员已上/班级总课时）
+  const classTotal = parseFloat(cls?.total_hours) || 0;
+  const classBefore = parseFloat(cls?.before_hours) || 0;
+  const progressPct = classTotal > 0 ? Math.min(100, Math.round((usedHours / classTotal) * 100)) : 0;
+
+  const isWarning = remainHours < 15 && remainHours > 0;
+  const isEmpty = remainHours <= 0;
+
+  let html = '<div class="header">' +
+    '<div class="logo">🌟 DK邻里</div>' +
+    '<div class="sub">少儿英语 · 课时查询</div>' +
+  '</div>';
+
+  html += '<div class="card">' +
+    '<div class="student-header">' +
+      '<div class="avatar">' + (student.name ? student.name.charAt(0) : '学') + '</div>' +
+      '<div class="student-info">' +
+        '<h2>' + student.name + '</h2>' +
+        '<div class="tag">' + clsName + ' · ' + phase + '阶段</div>' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+
+  // 续费提醒
+  if (isWarning) {
+    html += '<div class="alert-box">' +
+      '<div class="alert-icon">⚠️</div>' +
+      '<div class="alert-text">剩余课时不足，请及时续费</div>' +
+      '<div class="alert-sub">当前仅剩 ' + remainHours + ' 课时</div>' +
+    '</div>';
+  } else if (isEmpty) {
+    html += '<div class="alert-box" style="background:#fef2f2;border-color:#fecaca">' +
+      '<div class="alert-icon">🚫</div>' +
+      '<div class="alert-text">课时已用完，请续费</div>' +
+      '<div class="alert-sub">当前剩余 0 课时</div>' +
+    '</div>';
+  }
+
+  // 课时统计
+  html += '<div class="card">' +
+    '<div class="card-title">课时统计</div>' +
+    '<div class="stats-grid">' +
+      '<div class="stat-item used"><div class="num">' + usedHours + '</div><div class="label">已上课</div></div>' +
+      '<div class="stat-item remain"><div class="num">' + remainHours + '</div><div class="label">剩余课时</div></div>' +
+      '<div class="stat-item"><div class="num">' + paidHours + '</div><div class="label">总课时</div></div>' +
+    '</div>' +
+  '</div>';
+
+  // 班级进度
+  if (classTotal > 0) {
+    html += '<div class="card">' +
+      '<div class="card-title">班级进度</div>' +
+      '<div class="progress-section">' +
+        '<div class="progress-bar-bg"><div class="progress-bar-fill" style="width:' + progressPct + '%"></div></div>' +
+        '<div class="progress-text"><span>已上 ' + usedHours + ' 课时</span><span>共 ' + classTotal + ' 课时</span></div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  // 月度出勤明细
+  if (monthRows) {
+    html += '<div class="card">' +
+      '<div class="card-title">月度出勤明细</div>' +
+      '<table class="month-table">' +
+        '<tr><th>月份</th><th style="text-align:right">课时</th></tr>' +
+        monthRows +
+      '</table>' +
+    '</div>';
+  }
+
+  html += '<div style="text-align:center;padding:10px 0 30px">' +
+    '<a class="back-btn" onclick="showSearch()">返回查询</a>' +
+  '</div>';
+
+  document.getElementById('app').innerHTML = html;
+}
+
+init();
+</script>
+</body>
+</html>
