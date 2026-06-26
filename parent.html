@@ -148,8 +148,8 @@ async function loadData() {
 function showSearch() {
   const app = document.getElementById('app');
   app.innerHTML = '<div class="header">' +
-    '<div class="logo">DK邻里</div>' +
-    '<div class="sub">少儿英语 · 课时查询</div>' +
+    '<div class="logo">DK·邻里少儿英语</div>' +
+    '<div class="sub">在读学员课时查询</div>' +
   '</div>' +
   '<div class="card">' +
     '<div class="card-title">请输入孩子姓名查询</div>' +
@@ -206,11 +206,18 @@ function showStudent(studentId) {
   const remainHours = parseFloat(student.remaining_hours) || 0;
   const paidHours = parseFloat(student.paid_hours) || 0;
 
-  const monthRows = att.sort(function(a,b) {
-    return a.year !== b.year ? a.year - b.year : a.month - b.month;
-  }).map(function(a) {
-    return '<tr><td>' + a.year + '年' + a.month + '月</td><td>' + a.hours + ' 课时</td></tr>';
-  }).join('');
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth() + 1;
+
+  // 生成3月到当前月份的列表，没有出勤记录的月份显示0
+  const monthRows = [];
+  for (let m = 3; m <= currentMonth; m++) {
+    const record = att.find(function(a) { return a.year === currentYear && a.month === m; });
+    const hours = record ? (parseFloat(record.hours) || 0) : 0;
+    monthRows.push('<tr><td>' + currentYear + '年' + m + '月</td><td>' + hours + ' 课时</td></tr>');
+  }
+  const monthRowsHtml = monthRows.join('');
 
   const classTotal = parseFloat(cls && cls.total_hours) || 0;
   const progressPct = classTotal > 0 ? Math.min(100, Math.round((usedHours / classTotal) * 100)) : 0;
@@ -219,8 +226,8 @@ function showStudent(studentId) {
   const isEmpty = remainHours <= 0;
 
   let html = '<div class="header">' +
-    '<div class="logo">DK邻里</div>' +
-    '<div class="sub">少儿英语 · 课时查询</div>' +
+    '<div class="logo">DK·邻里少儿英语</div>' +
+    '<div class="sub">在读学员课时查询</div>' +
   '</div>';
 
   html += '<div class="card">' +
@@ -250,15 +257,15 @@ function showStudent(studentId) {
   html += '<div class="card">' +
     '<div class="card-title">课时统计</div>' +
     '<div class="stats-grid">' +
+      '<div class="stat-item"><div class="num">' + paidHours + '</div><div class="label">购买课时</div></div>' +
       '<div class="stat-item used"><div class="num">' + usedHours + '</div><div class="label">已上课</div></div>' +
       '<div class="stat-item remain"><div class="num">' + remainHours + '</div><div class="label">剩余课时</div></div>' +
-      '<div class="stat-item"><div class="num">' + paidHours + '</div><div class="label">总课时</div></div>' +
     '</div>' +
   '</div>';
 
   if (classTotal > 0) {
     html += '<div class="card">' +
-      '<div class="card-title">班级进度</div>' +
+      '<div class="card-title">' + (clsName ? clsName.split('(')[0] + ' ' : '') + '班级进度</div>' +
       '<div class="progress-section">' +
         '<div class="progress-bar-bg"><div class="progress-bar-fill" style="width:' + progressPct + '%"></div></div>' +
         '<div class="progress-text"><span>已上 ' + usedHours + ' 课时</span><span>共 ' + classTotal + ' 课时</span></div>' +
@@ -266,12 +273,12 @@ function showStudent(studentId) {
     '</div>';
   }
 
-  if (monthRows) {
+  if (monthRowsHtml) {
     html += '<div class="card">' +
       '<div class="card-title">月度出勤明细</div>' +
       '<table class="month-table">' +
         '<tr><th>月份</th><th style="text-align:right">课时</th></tr>' +
-        monthRows +
+        monthRowsHtml +
       '</table>' +
     '</div>';
   }
