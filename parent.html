@@ -75,6 +75,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 </div>
 
 <script>
+// 自动处理缓存，确保每次打开都是最新版本
+(function() {
+  if (!location.search.includes('_nocache_') && !sessionStorage.getItem('cache_busted')) {
+    sessionStorage.setItem('cache_busted', '1');
+    var sep = location.search ? '&' : '?';
+    location.replace(location.href + sep + '_nocache_=' + Date.now());
+  }
+})();
+
 // ═══════════════════════════════════════
 // Supabase 配置（与教务/销售系统共用）
 // ═══════════════════════════════════════
