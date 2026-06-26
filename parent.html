@@ -152,9 +152,12 @@ function showSearch() {
     '<div class="sub">在读学员课时查询</div>' +
   '</div>' +
   '<div class="card">' +
-    '<div class="card-title">请输入孩子姓名查询</div>' +
+    '<div class="card-title">请输入查询信息</div>' +
+    '<div class="search-box" style="margin-bottom:10px">' +
+      '<input type="text" id="searchInput" placeholder="孩子姓名" onkeydown="if(event.key===\'Enter\')doSearch()">' +
+    '</div>' +
     '<div class="search-box">' +
-      '<input type="text" id="searchInput" placeholder="例如：黄梓铭" onkeydown="if(event.key===\'Enter\')doSearch()">' +
+      '<input type="text" id="phoneInput" placeholder="家长手机尾号4位" maxlength="4" onkeydown="if(event.key===\'Enter\')doSearch()">' +
       '<button onclick="doSearch()">查询</button>' +
     '</div>' +
     '<div id="searchResult" class="result-list"></div>' +
@@ -162,15 +165,25 @@ function showSearch() {
 }
 
 function doSearch() {
-  const val = document.getElementById('searchInput').value.trim();
-  if (!val) return;
-  searchByName(val);
+  const name = document.getElementById('searchInput').value.trim();
+  const phoneTail = document.getElementById('phoneInput').value.trim();
+  if (!name) {
+    document.getElementById('searchResult').innerHTML = '<div class="empty-state">请输入孩子姓名</div>';
+    return;
+  }
+  if (!phoneTail || phoneTail.length !== 4 || !/^\d{4}$/.test(phoneTail)) {
+    document.getElementById('searchResult').innerHTML = '<div class="empty-state">请输入家长手机尾号4位数字</div>';
+    return;
+  }
+  searchByName(name, phoneTail);
 }
 
-function searchByName(name) {
-  const list = _students.filter(function(s) { return s.name && s.name.indexOf(name) !== -1; });
+function searchByName(name, phoneTail) {
+  const list = _students.filter(function(s) {
+    return s.name && s.name.indexOf(name) !== -1 && s.phone && s.phone.slice(-4) === phoneTail;
+  });
   if (list.length === 0) {
-    document.getElementById('searchResult').innerHTML = '<div class="empty-state">未找到学员「' + name + '」</div>';
+    document.getElementById('searchResult').innerHTML = '<div class="empty-state">未找到匹配的学员信息，请检查姓名和手机尾号</div>';
     return;
   }
   if (list.length === 1) {
