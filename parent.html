@@ -273,7 +273,7 @@ function showStudent(studentId) {
       '<div class="card-title">' + (clsName ? clsName.split('(')[0] + ' ' : '') + '班级进度</div>' +
       '<div class="progress-section">' +
         '<div class="progress-bar-bg"><div class="progress-bar-fill" style="width:' + progressPct + '%"></div></div>' +
-        '<div class="progress-text"><span>已上 ' + classCumulative + ' 课时</span><span>共 ' + classTotal + ' 课时</span></div>' +
+        '<div class="progress-text"><span>已上 ' + classCumulative + ' 课时（' + progressPct + '%）</span><span>共 ' + classTotal + ' 课时</span></div>' +
       '</div>' +
     '</div>';
   }
