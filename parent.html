@@ -273,13 +273,13 @@ function showStudent(studentId) {
   if (isWarning) {
     html += '<div class="alert-box">' +
       '<div class="alert-icon">⚠️</div>' +
-      '<div class="alert-text">剩余课时不足，请及时续费</div>' +
-      '<div class="alert-sub">当前仅剩 ' + remainHours + ' 课时</div>' +
+      '<div class="alert-text">剩余课时不多，建议您尽快续费</div>' +
+      '<div class="alert-sub">当前剩余 ' + remainHours + ' 课时</div>' +
     '</div>';
   } else if (isEmpty) {
     html += '<div class="alert-box" style="background:#fef2f2;border-color:#fecaca">' +
       '<div class="alert-icon">🚫</div>' +
-      '<div class="alert-text">课时已用完，请续费</div>' +
+      '<div class="alert-text">课时已用完，请尽快续费</div>' +
       '<div class="alert-sub">当前剩余 0 课时</div>' +
     '</div>';
   }
