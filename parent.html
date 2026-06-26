@@ -224,7 +224,8 @@ function showStudent(studentId) {
   const monthRowsHtml = monthRows.join('');
 
   const classTotal = parseFloat(cls && cls.total_hours) || 0;
-  const progressPct = classTotal > 0 ? Math.min(100, Math.round((usedHours / classTotal) * 100)) : 0;
+  const classCumulative = cls ? ((cls.m3 || 0) + (cls.m4 || 0) + (cls.m5 || 0) + (cls.m6 || 0)) : 0;
+  const progressPct = classTotal > 0 ? Math.min(100, Math.round((classCumulative / classTotal) * 100)) : 0;
 
   const isWarning = remainHours < 15 && remainHours > 0;
   const isEmpty = remainHours <= 0;
@@ -272,7 +273,7 @@ function showStudent(studentId) {
       '<div class="card-title">' + (clsName ? clsName.split('(')[0] + ' ' : '') + '班级进度</div>' +
       '<div class="progress-section">' +
         '<div class="progress-bar-bg"><div class="progress-bar-fill" style="width:' + progressPct + '%"></div></div>' +
-        '<div class="progress-text"><span>已上 ' + usedHours + ' 课时</span><span>共 ' + classTotal + ' 课时</span></div>' +
+        '<div class="progress-text"><span>已上 ' + classCumulative + ' 课时</span><span>共 ' + classTotal + ' 课时</span></div>' +
       '</div>' +
     '</div>';
   }
