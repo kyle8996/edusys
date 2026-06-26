@@ -642,7 +642,7 @@ async function renderStudents() {
             (isGrad ? '<span class="grad-tag">毕业</span>' : '') +
             (isWarn ? '<span class="badge-warn">续费</span>' : '') + '</td>' +
           '<td>' + cname + '</td>' +
-          '<td style="font-family:monospace;font-size:12px;color:#64748b">' + (s.phone ? '****' + s.phone.slice(-4) : '—') + '</td>' +
+          '<td style="font-family:monospace;font-size:12px;color:#64748b">' + (s.phone ? s.phone : '—') + '</td>' +
           '<td>' + consumed.toFixed(1) + '</td>' +
           '<td>' + (s.paid_hours||0) + '</td>' +
           '<td><b style="color:' + (rem < 15 ? '#f97316' : '#2563eb') + '">' + rem + '</b></td>' +
