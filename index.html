@@ -704,16 +704,23 @@ async function renderStudents() {
     const cls = _classes.find(c => c.id === cid);
     const freq = cls?.freq || 8;
     const cname = classMap[cid] || '未知班级';
-    const totalCols = 18;
     
-    // 表头：拖拽 | 姓名 | 1~12月 | 年合计 | 累计已消 | 缴费 | 剩余 | 操作
+    // 动态月份范围：3月开始，到当前月份
+    const startMonth = 3;
+    const endMonth = new Date().getMonth() + 1; // 1-12
+    const visibleMonths = [];
+    for (let m = startMonth; m <= endMonth; m++) visibleMonths.push(m);
+    const monthCount = visibleMonths.length;
+    const totalCols = 2 + monthCount + 5; // 拖拽+姓名 + 月份 + 合计+累计已消+缴费+剩余+操作
+    
+    // 表头：拖拽 | 姓名 | 3~当前月 | 年合计 | 累计已消 | 缴费 | 剩余 | 操作
     let theadHtml = '<tr>' +
       '<th style="width:28px">⋮</th>' +
       '<th style="text-align:left;width:70px">姓名</th>';
-    for (let m = 1; m <= 12; m++) {
+    visibleMonths.forEach(m => {
       const isTeaching = m >= 3 && m <= 6;
       theadHtml += '<th class="att-month-hd"' + (isTeaching ? ' style="background:#e0f0ff;color:#2563eb"' : '') + '>' + m + '月</th>';
-    }
+    });
     theadHtml += '<th style="width:44px;color:#2563eb;font-weight:700">合计</th>' +
       '<th style="width:52px">累计已消</th>' +
       '<th style="width:48px">缴费</th>' +
@@ -743,7 +750,7 @@ async function renderStudents() {
           (isWarn ? '<span class="badge-warn">续费</span>' : '') + '</td>';
       
       let rowYearTotal = 0;
-      for (let m = 1; m <= 12; m++) {
+      visibleMonths.forEach(m => {
         const rec = _attendance.find(a => a.student_id === s.id && a.year === year && a.month === m);
         const hours = rec ? (rec.hours || 0) : 0;
         rowYearTotal += hours;
@@ -752,7 +759,7 @@ async function renderStudents() {
           '" data-sid="' + s.id + '" data-month="' + m + '" class="stu-att-input"' +
           (isTeaching ? '' : ' style="color:#94a3b8"') + 
           ' oninput="updateStuRowTotals()"></td>';
-      }
+      });
       html += '<td class="att-total">' + rowYearTotal.toFixed(1) + '</td>' +
         '<td>' + consumed.toFixed(1) + '</td>' +
         '<td>' + (s.paid_hours||0) + '</td>' +
@@ -926,9 +933,10 @@ function markStuAllPresent() {
   if (filterId === 'all') return;
   const cid = parseInt(filterId);
   const freq = _classes.find(c => c.id === cid)?.freq || 8;
+  const currentMonth = new Date().getMonth() + 1;
   document.querySelectorAll('.stu-att-input').forEach(inp => {
     const m = parseInt(inp.dataset.month);
-    if (m >= 3 && m <= 6) { inp.value = freq; inp.classList.add('changed'); }
+    if (m >= 3 && m <= currentMonth) { inp.value = freq; inp.classList.add('changed'); }
   });
   updateStuRowTotals();
 }
@@ -1197,7 +1205,10 @@ function exportStudents() {
     // 具体班级：月度展开视图
     const cid = parseInt(filterId);
     const cname = classMap[cid] || '未知班级';
-    const headers = ['姓名', '1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月', '年合计', '累计已消耗', '缴费课时', '剩余课时'];
+    const currentMonth = new Date().getMonth() + 1;
+    const monthHeaders = [];
+    for (let m = 3; m <= currentMonth; m++) monthHeaders.push(m + '月');
+    const headers = ['姓名'].concat(monthHeaders).concat(['年合计', '累计已消耗', '缴费课时', '剩余课时']);
     const rows = [];
     _students.filter(s => s.class_id === cid && (document.getElementById('showGraduated').checked || s.status !== '毕业'))
       .sort((a,b) => (a.sort_order||0) - (b.sort_order||0))
@@ -1206,7 +1217,7 @@ function exportStudents() {
         const consumed = (s.paid_hours||0) - rem;
         const row = [s.name];
         let yearTotal = 0;
-        for (let m = 1; m <= 12; m++) {
+        for (let m = 3; m <= currentMonth; m++) {
           const rec = _attendance.find(a => a.student_id === s.id && a.year === year && a.month === m);
           const hours = rec ? (rec.hours||0) : 0;
           yearTotal += hours;
