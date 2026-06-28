@@ -83,7 +83,7 @@ tr.drag-over-bottom td{box-shadow:inset 0 -3px 0 0 #3b82f6}
 .summary-item .num{font-size:28px;font-weight:800;line-height:1.2}
 .summary-item .lbl{font-size:11px;color:#64748b;margin-top:2px}
 .summary-item .sub{font-size:11px;color:#94a3b8;margin-top:1px}
-.sc-active .num{color:#2563eb}.sc-opened .num{color:#10b981}.sc-notopened .num{color:#94a3b8}.sc-grad .num{color:#8b5cf6}
+.sc-active .num{color:#2563eb}.sc-opened .num{color:#10b981}.sc-notopened .num{color:#94a3b8}.sc-grad .num{color:#8b5cf6}.sc-shortterm .num{color:#f59e0b}
 
 /* ═══ 课程表预览 ═══ */
 .sch-grid{border-collapse:collapse;width:100%;table-layout:fixed}
@@ -415,14 +415,20 @@ function switchTab(tab) {
 // Tab 1: 班级管理
 // ═══════════════════════════════════════
 function renderClasses() {
+  // 识别短期班（暑假班等）
+  const shortTermPhaseIds = new Set(_classes.filter(c => (c.phase||'') === '暑假').map(c => c.id));
   // 修复: 只统计在读学员，排除已毕业
   const countMap = {};
   _students.filter(s => s.status !== '毕业').forEach(s => { countMap[s.class_id] = (countMap[s.class_id]||0) + 1; });
 
   // ── 统计汇总 ──
-  const activeStu = _students.filter(s => s.status !== '毕业');
+  const allActiveStu = _students.filter(s => s.status !== '毕业');
+  // 在读学员：排除短期班（暑假班）
+  const activeStu = allActiveStu.filter(s => !shortTermPhaseIds.has(s.class_id));
+  // 短期班学员
+  const shortTermStu = allActiveStu.filter(s => shortTermPhaseIds.has(s.class_id));
   const gradStu = _students.filter(s => s.status === '毕业');
-  // 已开课 = 在读 + 班级累计排课 > 0
+  // 已开课 = 常规在读 + 班级累计排课 > 0（排除短期班）
   const openedCount = activeStu.filter(s => {
     const cls = _classes.find(c => c.id === s.class_id);
     if (!cls) return false;
@@ -433,7 +439,8 @@ function renderClasses() {
     '<div class="summary-item sc-active"><div class="num">' + activeStu.length + '</div><div class="lbl">在读学员</div></div>' +
     '<div class="summary-item sc-opened"><div class="num">' + openedCount + '</div><div class="lbl">已开课</div><div class="sub">累计排课 &gt; 0</div></div>' +
     '<div class="summary-item sc-notopened"><div class="num">' + notOpenedCount + '</div><div class="lbl">未开课</div><div class="sub">累计排课 = 0</div></div>' +
-    '<div class="summary-item sc-grad"><div class="num">' + gradStu.length + '</div><div class="lbl">已毕业</div></div>';
+    '<div class="summary-item sc-grad"><div class="num">' + gradStu.length + '</div><div class="lbl">已毕业</div></div>' +
+    '<div class="summary-item sc-shortterm"><div class="num">' + shortTermStu.length + '</div><div class="lbl">短期班学员</div><div class="sub">暑假班等</div></div>';
 
   let html = '';
   // 按 sort_order 排序（拖拽自定义顺序）
