@@ -445,8 +445,14 @@ function renderClasses() {
     const phase = c.phase || '';
     const sch = SCHEDULE_DATA.find(s => s.classId === c.id);
     const teacher = sch ? (sch.teacher||'—') : '—';
+    // 判断是否已开课：当年累计排课 > 0
+    const cumHours = (c.m3||0) + (c.m4||0) + (c.m5||0) + (c.m6||0);
+    const isOpened = cumHours > 0;
+    const statusTag = isOpened
+      ? '<span style="display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;background:#dcfce7;color:#16a34a;font-weight:600">已开课</span>'
+      : '<span style="display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;background:#f3f4f6;color:#9ca3af;font-weight:600">未开课</span>';
     html += '<tr>' +
-      '<td style="text-align:left;font-weight:600">' + c.name + ' <span class="tag tag-' + (phase||'k1').toLowerCase() + '">' + phase + '阶段</span></td>' +
+      '<td style="text-align:left;font-weight:600">' + c.name + ' <span class="tag tag-' + (phase||'k1').toLowerCase() + '">' + phase + '阶段</span> ' + statusTag + '</td>' +
       '<td>' + phase + '</td>' +
       '<td><b>' + teacher + '</b></td>' +
       '<td>' + (c.freq||0) + ' 节/月</td>' +
