@@ -258,7 +258,13 @@ function showStudent(studentId) {
   const monthRowsHtml = monthRows.join('');
 
   const classTotal = parseFloat(cls && cls.total_hours) || 0;
-  const classCumulative = cls ? ((cls.m3 || 0) + (cls.m4 || 0) + (cls.m5 || 0) + (cls.m6 || 0)) : 0;
+  // 动态计算3月到当前月份的累计课时
+  let classCumulative = 0;
+  if (cls) {
+    for (let m = 3; m <= currentMonth; m++) {
+      classCumulative += (cls['m' + m] || 0);
+    }
+  }
   const progressPct = classTotal > 0 ? Math.min(100, Math.round((classCumulative / classTotal) * 100)) : 0;
 
   const isWarning = remainHours < 15 && remainHours > 0;
