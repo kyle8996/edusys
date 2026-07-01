@@ -206,7 +206,7 @@ tr.drag-over-bottom td{box-shadow:inset 0 -3px 0 0 #3b82f6}
     <h2>班级排课进度 <button class="btn btn-success btn-sm" onclick="saveClassProgress()">保存修改</button>
       <button class="btn btn-gray btn-sm" onclick="renderClassProgress()">重置</button>
       <button class="btn btn-gray btn-sm" onclick="exportTab('stats')" style="margin-left:auto">📥 导出</button></h2>
-    <div class="tbl"><table><thead><tr>
+    <div class="tbl"><table><thead><tr id="statsThead">
       <th style="text-align:left">班级</th><th>年前已上</th><th>3月排课</th><th>4月排课</th><th>5月排课</th><th>6月排课</th>
       <th>累计已上</th><th>阶段总课时</th><th>进度</th><th>状态</th>
     </tr></thead><tbody id="statsTbody"></tbody></table></div>
@@ -372,6 +372,18 @@ function getClassName(cid) {
   return c ? c.name : '未知班级';
 }
 
+// 获取当年累计排课（从3月到当前月份，自动随时间扩展）
+function getClassCumulativeHours(c) {
+  const startMonth = 3;
+  const currentMonth = new Date().getMonth() + 1;
+  const endMonth = Math.max(startMonth, currentMonth);
+  let sum = 0;
+  for (let m = startMonth; m <= endMonth; m++) {
+    sum += (c['m' + m] || 0);
+  }
+  return sum;
+}
+
 // 班级排序：按阶段(K1→K2→S→暑假)，已开课优先，再按名称数字排序
 function sortClassesByPhase(a, b) {
   const phaseOrder = {'K1':0,'K2':1,'S':2,'暑假':3};
@@ -380,8 +392,8 @@ function sortClassesByPhase(a, b) {
   const pb = phaseOrder[b.phase] ?? 99;
   if (pa !== pb) return pa - pb;
   // 2. 已开课 vs 未开课（累计排课 > 0 为已开课）
-  const aOpened = ((a.m3||0)+(a.m4||0)+(a.m5||0)+(a.m6||0)) > 0;
-  const bOpened = ((b.m3||0)+(b.m4||0)+(b.m5||0)+(b.m6||0)) > 0;
+  const aOpened = getClassCumulativeHours(a) > 0;
+  const bOpened = getClassCumulativeHours(b) > 0;
   if (aOpened !== bOpened) return aOpened ? -1 : 1;
   // 3. 名称数字排序（提取数字部分比较）
   const na = parseInt(a.name.replace(/\D/g,'')) || 9999;
@@ -432,7 +444,7 @@ function renderClasses() {
   const openedCount = activeStu.filter(s => {
     const cls = _classes.find(c => c.id === s.class_id);
     if (!cls) return false;
-    return ((cls.m3||0) + (cls.m4||0) + (cls.m5||0) + (cls.m6||0)) > 0;
+    return getClassCumulativeHours(cls) > 0;
   }).length;
   const notOpenedCount = activeStu.length - openedCount;
   document.getElementById('classSummary').innerHTML =
@@ -450,7 +462,7 @@ function renderClasses() {
     const sch = SCHEDULE_DATA.find(s => s.classId === c.id);
     const teacher = sch ? (sch.teacher||'—') : '—';
     // 判断是否已开课：当年累计排课 > 0
-    const cumHours = (c.m3||0) + (c.m4||0) + (c.m5||0) + (c.m6||0);
+    const cumHours = getClassCumulativeHours(c);
     const isOpened = cumHours > 0;
     const statusTag = isOpened
       ? '<span style="display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;background:#dcfce7;color:#16a34a;font-weight:600">已开课</span>'
@@ -984,10 +996,26 @@ async function saveStuAttendance() {
 // Tab 4: 班级排课
 // ═══════════════════════════════════════
 function renderClassProgress() {
-  let html = '';
-  const months = [3,4,5,6];
-  const mkeys = ['m3','m4','m5','m6'];
+  // 动态月份范围：3月开始，到当前月份（当前7月则显示 3-7月）
+  const startMonth = 3;
+  const currentMonth = new Date().getMonth() + 1; // 1-12
+  const endMonth = Math.max(startMonth, currentMonth);
+  const months = [];
+  const mkeys = [];
+  for (let m = startMonth; m <= endMonth; m++) {
+    months.push(m);
+    mkeys.push('m' + m);
+  }
   
+  // 动态渲染表头
+  const thead = document.getElementById('statsThead');
+  if (thead) {
+    thead.innerHTML = '<th style="text-align:left">班级</th><th>年前已上</th>' +
+      months.map(m => '<th>' + m + '月排课</th>').join('') +
+      '<th>累计已上</th><th>阶段总课时</th><th>进度</th><th>状态</th>';
+  }
+  
+  let html = '';
   // 按 sort_order 排序
   _classes.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
   
@@ -1336,9 +1364,16 @@ function exportStudents() {
 }
 
 function exportStats() {
-  const months = [3,4,5,6];
-  const mkeys = ['m3','m4','m5','m6'];
-  const headers = ['班级', '年前已上', '3月排课', '4月排课', '5月排课', '6月排课', '累计已上', '阶段总课时', '进度(%)', '状态'];
+  const startMonth = 3;
+  const currentMonth = new Date().getMonth() + 1;
+  const endMonth = Math.max(startMonth, currentMonth);
+  const months = [];
+  const mkeys = [];
+  for (let m = startMonth; m <= endMonth; m++) {
+    months.push(m);
+    mkeys.push('m' + m);
+  }
+  const headers = ['班级', '年前已上'].concat(months.map(m => m + '月排课')).concat(['累计已上', '阶段总课时', '进度(%)', '状态']);
 
   const rows = _classes.map(c => {
     const totalHours = c.total_hours || 0;
@@ -1359,7 +1394,7 @@ function exportStats() {
     return [
       c.name,
       before + '',
-      (c.m3||0) + '', (c.m4||0) + '', (c.m5||0) + '', (c.m6||0) + '',
+      ...mkeys.map(k => (c[k] || 0) + ''),
       cumulative + '',
       totalHours + '',
       pct + '%',
