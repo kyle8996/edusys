@@ -704,7 +704,7 @@ async function renderStudents() {
         const rem = calcRemaining(s.id);
         const consumed = (s.paid_hours||0) - rem;
         const isGrad = s.status === '毕业';
-        const isWarn = !isGrad && rem < 15 && rem > 0;
+        const isWarn = !isGrad && rem <= 10 && rem > 0;
         const rowClass = isGrad ? 'row-grad' : (isWarn ? 'row-warn' : '');
         html += '<tr class="' + rowClass + '" draggable="true" ' +
           'ondragstart="dragStart(event,' + s.id + ')" ' +
@@ -720,7 +720,7 @@ async function renderStudents() {
           '<td style="font-family:monospace;font-size:12px;color:#64748b">' + (s.phone ? s.phone : '—') + '</td>' +
           '<td>' + consumed.toFixed(1) + '</td>' +
           '<td>' + (s.paid_hours||0) + '</td>' +
-          '<td><b style="display:inline-block;padding:4px 10px;border-radius:6px;font-size:15px;background:' + (rem < 15 ? '#fff7ed' : '#eff6ff') + ';color:' + (rem < 15 ? '#ea580c' : '#2563eb') + '">' + rem + '</b></td>' +
+          '<td><b style="display:inline-block;padding:4px 10px;border-radius:6px;font-size:15px;background:' + (rem <= 10 ? '#fff7ed' : '#eff6ff') + ';color:' + (rem <= 10 ? '#ea580c' : '#2563eb') + '">' + rem + '</b></td>' +
           '<td>' +
             '<label class="status-toggle" onclick="toggleStatus(' + s.id + ')" title="切换在读/毕业">' +
             '<input type="checkbox" ' + (isGrad ? '' : 'checked') + '>' +
@@ -769,7 +769,7 @@ async function renderStudents() {
       const rem = calcRemaining(s.id);
       const consumed = (s.paid_hours||0) - rem;
       const isGrad = s.status === '毕业';
-      const isWarn = !isGrad && rem < 15 && rem > 0;
+      const isWarn = !isGrad && rem <= 10 && rem > 0;
       const rowClass = isGrad ? 'row-grad' : (isWarn ? 'row-warn' : '');
       
       html += '<tr class="' + rowClass + '" data-sid="' + s.id + '" draggable="true" ' +
@@ -797,7 +797,7 @@ async function renderStudents() {
       html += '<td class="att-total">' + rowYearTotal.toFixed(1) + '</td>' +
         '<td>' + consumed.toFixed(1) + '</td>' +
         '<td>' + (s.paid_hours||0) + '</td>' +
-        '<td><b style="color:' + (rem < 15 ? '#f97316' : '#2563eb') + '">' + rem + '</b></td>' +
+        '<td><b style="color:' + (rem <= 10 ? '#f97316' : '#2563eb') + '">' + rem + '</b></td>' +
         '<td>' +
           '<label class="status-toggle" onclick="toggleStatus(' + s.id + ')" title="切换在读/毕业">' +
           '<input type="checkbox" ' + (isGrad ? '' : 'checked') + '>' +
