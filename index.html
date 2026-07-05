@@ -962,7 +962,10 @@ async function openRenewalModal(sid) {
   const histDiv = document.getElementById('renewalHistory');
   histDiv.innerHTML = '<div style="font-size:12px;color:#64748b;font-weight:600;margin-bottom:6px">续费记录</div>';
   try {
-    const { data: renewals, error } = await sb.from('renewals').select('*').eq('phone', s.phone||'').order('created_at', { ascending: false });
+    const { data: renewals, error } = await sb.from('renewals').select('*')
+      .eq('phone', s.phone||'')
+      .eq('student_name', s.name||'')
+      .order('created_at', { ascending: false });
     if (renewals && renewals.length > 0) {
       const rows = renewals.slice(0, 5).map(r => {
         const src = r.source === 'sales' ? '销售' : '教务';

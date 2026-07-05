@@ -32,3 +32,26 @@ WHERE name = '陈攸诺';
 
 -- 4. 验证
 SELECT id, name, paid_hours FROM students WHERE name = '陈攸诺';
+
+
+-- ============================================================
+-- 删除刘睿怡 2026-07-05 的重复续费记录（80课时 = 6月14日 29+51）
+-- ============================================================
+
+-- 1. 先查看刘睿怡所有续费记录，确认重复
+SELECT * FROM renewals WHERE student_name = '刘睿怡' ORDER BY payment_date;
+
+-- 2. 删除 2026-07-05 的 80 课时重复记录（这是 6/14 两笔的合计，不应单独存在）
+DELETE FROM renewals
+WHERE student_name = '刘睿怡'
+  AND payment_date = '2026-07-05'
+  AND course_hours = 80;
+
+-- 3. 同步扣减刘睿怡的 paid_hours（重复记录导致缴费课时被多加了80）
+UPDATE students
+SET paid_hours = paid_hours - 80
+WHERE name = '刘睿怡';
+
+-- 4. 验证
+SELECT id, name, paid_hours FROM students WHERE name = '刘睿怡';
+SELECT * FROM renewals WHERE student_name = '刘睿怡' ORDER BY payment_date;
