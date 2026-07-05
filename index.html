@@ -964,13 +964,16 @@ async function openRenewalModal(sid) {
   try {
     const { data: renewals, error } = await sb.from('renewals').select('*').eq('phone', s.phone||'').order('created_at', { ascending: false });
     if (renewals && renewals.length > 0) {
-      const rows = renewals.slice(0, 5).map(r =>
-        '<div style="display:flex;justify-content:space-between;padding:4px 8px;font-size:12px;border-bottom:1px solid #f1f5f9">' +
-        '<span>' + (r.payment_date || '—') + '</span>' +
-        '<span>+' + (r.course_hours||0) + ' 课时</span>' +
-        '<span>¥' + (r.total_payment||0) + '</span>' +
-        '</div>'
-      ).join('');
+      const rows = renewals.slice(0, 5).map(r => {
+        const src = r.source === 'sales' ? '销售' : '教务';
+        const srcColor = r.source === 'sales' ? '#10b981' : '#2563eb';
+        return '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 8px;font-size:12px;border-bottom:1px solid #f1f5f9">' +
+          '<span>' + (r.payment_date || '—') + '</span>' +
+          '<span style="color:' + srcColor + ';font-size:10px;border:1px solid ' + srcColor + ';border-radius:4px;padding:1px 4px">' + src + '</span>' +
+          '<span>+' + (r.course_hours||0) + ' 课时</span>' +
+          '<span>¥' + (r.total_payment||0) + '</span>' +
+          '</div>';
+      }).join('');
       histDiv.innerHTML += rows;
     } else {
       histDiv.innerHTML += '<div style="font-size:12px;color:#94a3b8;padding:4px 8px">暂无续费记录</div>';
