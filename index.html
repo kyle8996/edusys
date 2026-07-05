@@ -1008,7 +1008,8 @@ async function saveRenewal() {
     course_hours: hours,
     book_fee: 0,
     total_payment: amount,
-    unit_price: amount > 0 && hours > 0 ? Math.round(amount / hours * 100) / 100 : 0
+    unit_price: amount > 0 && hours > 0 ? Math.round(amount / hours * 100) / 100 : 0,
+    source: 'edusys'
   };
   try {
     await sb.from('renewals').insert([renewalData]);
