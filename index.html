@@ -281,6 +281,40 @@ tr.drag-over-bottom td{box-shadow:inset 0 -3px 0 0 #3b82f6}
   </div>
 </div>
 
+<!-- 弹窗：批量转班 -->
+<div class="modal-overlay" id="transferModal">
+  <div class="modal">
+    <h3>🔄 批量转班</h3>
+    <input type="hidden" id="transferFromClassId">
+    <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;margin-bottom:14px">
+      <div style="font-size:12px;color:#64748b">转出班级</div>
+      <div id="transferFromName" style="font-size:16px;font-weight:600;color:#1e40af;margin-top:2px"></div>
+      <div id="transferStuCount" style="font-size:12px;color:#64748b;margin-top:4px"></div>
+    </div>
+    <div class="form-group"><label>转入班级</label><select id="transferToClass"></select></div>
+    <div style="font-size:12px;color:#f59e0b;margin-top:8px">⚠️ 转班后学员的出勤记录保留不变，仅切换所属班级</div>
+    <div class="form-actions" style="margin-top:16px"><button class="btn btn-gray" onclick="closeModal('transferModal')">取消</button><button class="btn btn-primary" onclick="executeTransfer()">确认转班</button></div>
+  </div>
+</div>
+
+<!-- 弹窗：续费 -->
+<div class="modal-overlay" id="renewalModal">
+  <div class="modal">
+    <h3>💰 学员续费</h3>
+    <input type="hidden" id="renewalStuId">
+    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 14px;margin-bottom:14px">
+      <div style="font-size:12px;color:#64748b">续费学员</div>
+      <div id="renewalStuName" style="font-size:16px;font-weight:600;color:#166534;margin-top:2px"></div>
+      <div id="renewalStuInfo" style="font-size:12px;color:#64748b;margin-top:4px"></div>
+    </div>
+    <div class="form-group"><label>续费日期</label><input type="date" id="renewalDate"></div>
+    <div class="form-group"><label>续费课时数</label><input type="number" id="renewalHours" value="0" min="1" step="0.5" style="font-size:16px;font-weight:600"></div>
+    <div class="form-group"><label>续费金额（¥）</label><input type="number" id="renewalAmount" value="0" min="0" step="100"></div>
+    <div id="renewalHistory" style="margin-top:14px;max-height:120px;overflow-y:auto"></div>
+    <div class="form-actions" style="margin-top:16px"><button class="btn btn-gray" onclick="closeModal('renewalModal')">取消</button><button class="btn btn-primary" onclick="saveRenewal()">确认续费</button></div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
 // 全局错误捕获：防止白屏
@@ -390,6 +424,10 @@ function getClassCumulativeHours(c) {
 // 班级排序：按阶段(K1→K2→S→暑假)，已开课优先，再按名称数字排序
 function sortClassesByPhase(a, b) {
   const phaseOrder = {'K1':0,'K2':1,'S':2,'暑假':3};
+  // 0. 已毕业班级排到最后
+  const aGrad = a.status === '已毕业';
+  const bGrad = b.status === '已毕业';
+  if (aGrad !== bGrad) return aGrad ? 1 : -1;
   // 1. 阶段顺序
   const pa = phaseOrder[a.phase] ?? 99;
   const pb = phaseOrder[b.phase] ?? 99;
@@ -439,7 +477,12 @@ function renderClasses() {
   // ── 统计汇总 ──
   const allActiveStu = _students.filter(s => s.status !== '毕业');
   // 在读学员：排除短期班（暑假班）
-  const activeStu = allActiveStu.filter(s => !shortTermPhaseIds.has(s.class_id));
+  // 统计：在读学员排除已毕业班级
+  const activeStu = allActiveStu.filter(s => {
+    if (shortTermPhaseIds.has(s.class_id)) return false;
+    const cls = _classes.find(c => c.id === s.class_id);
+    return cls && cls.status !== '已毕业';
+  });
   // 短期班学员
   const shortTermStu = allActiveStu.filter(s => shortTermPhaseIds.has(s.class_id));
   const gradStu = _students.filter(s => s.status === '毕业');
@@ -462,15 +505,22 @@ function renderClasses() {
   const sortedClasses = [..._classes].sort((a,b) => (a.sort_order||0) - (b.sort_order||0));
   sortedClasses.forEach(c => {
     const phase = c.phase || '';
+    const isGraduated = c.status === '已毕业';
     const sch = SCHEDULE_DATA.find(s => s.classId === c.id);
     const teacher = sch ? (sch.teacher||'—') : '—';
     // 判断是否已开课：当年累计排课 > 0
     const cumHours = getClassCumulativeHours(c);
     const isOpened = cumHours > 0;
-    const statusTag = isOpened
-      ? '<span style="display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;background:#dcfce7;color:#16a34a;font-weight:600">已开课</span>'
-      : '<span style="display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;background:#f3f4f6;color:#9ca3af;font-weight:600">未开课</span>';
-    html += '<tr draggable="true" data-cid="' + c.id + '">' +
+    let statusTag;
+    if (isGraduated) {
+      statusTag = '<span style="display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;background:#f3e8ff;color:#9333ea;font-weight:600">已毕业</span>';
+    } else if (isOpened) {
+      statusTag = '<span style="display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;background:#dcfce7;color:#16a34a;font-weight:600">已开课</span>';
+    } else {
+      statusTag = '<span style="display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;background:#f3f4f6;color:#9ca3af;font-weight:600">未开课</span>';
+    }
+    const rowStyle = isGraduated ? ' style="opacity:0.5"' : '';
+    html += '<tr draggable="true" data-cid="' + c.id + '"' + rowStyle + '>' +
       '<td><span class="drag-hint">⋮⋮</span></td>' +
       '<td style="text-align:left;font-weight:600">' + c.name + ' <span class="tag tag-' + (phase||'k1').toLowerCase() + '">' + phase + '阶段</span> ' + statusTag + '</td>' +
       '<td>' + phase + '</td>' +
@@ -479,13 +529,78 @@ function renderClasses() {
       '<td><b>' + (c.total_hours||0) + '</b></td>' +
       '<td>' + (c.before_hours||0) + '</td>' +
       '<td>' + (countMap[c.id]||0) + ' 人</td>' +
-      '<td><button class="btn btn-gray btn-xs" onclick="editClass(' + c.id + ')">✏️</button> ' +
+      '<td>' +
+      (isGraduated
+        ? '<button class="btn btn-gray btn-xs" onclick="ungraduateClass(' + c.id + ')" title="恢复在读">🔄 恢复</button> '
+        : '<button class="btn btn-xs" style="background:#8b5cf6;color:#fff" onclick="graduateClass(' + c.id + ')" title="班级毕业归档">🎓 毕业</button> ' +
+          '<button class="btn btn-xs" style="background:#0ea5e9;color:#fff" onclick="openTransferModal(' + c.id + ')" title="批量转班">🔄 转班</button> '
+      ) +
+      '<button class="btn btn-gray btn-xs" onclick="editClass(' + c.id + ')">✏️</button> ' +
       '<button class="btn btn-danger btn-xs" onclick="deleteClass(' + c.id + ')">🗑</button></td></tr>';
   });
   document.getElementById('classTbody').innerHTML = html || '<tr><td colspan="9" style="color:#94a3b8;padding:30px">暂无班级</td></tr>';
 
   // 绑定班级列表拖拽排序
   initClassDragSort();
+}
+
+// 班级毕业/恢复
+async function graduateClass(cid) {
+  const c = _classes.find(x => x.id === cid);
+  if (!c) return;
+  if (!confirm('确认将「' + c.name + '」标记为已毕业？\n\n班级将归档显示（半透明），在读学员不会被标记毕业。\n如需升级到新阶段，请先「批量转班」后再毕业。')) return;
+  const { error } = await sb.from('classes').update({ status: '已毕业' }).eq('id', cid);
+  if (error) { showToast('操作失败: ' + error.message, false); return; }
+  c.status = '已毕业';
+  renderClasses();
+  showToast('班级已归档为已毕业');
+}
+
+async function ungraduateClass(cid) {
+  const c = _classes.find(x => x.id === cid);
+  if (!c) return;
+  const { error } = await sb.from('classes').update({ status: '在读' }).eq('id', cid);
+  if (error) { showToast('操作失败: ' + error.message, false); return; }
+  c.status = '在读';
+  renderClasses();
+  showToast('班级已恢复为在读');
+}
+
+// 批量转班
+function openTransferModal(fromCid) {
+  const c = _classes.find(x => x.id === fromCid);
+  if (!c) return;
+  const stuCount = _students.filter(s => s.class_id === fromCid && s.status !== '毕业').length;
+  document.getElementById('transferFromClassId').value = fromCid;
+  document.getElementById('transferFromName').textContent = c.name + '（' + (c.phase||'') + '阶段）';
+  document.getElementById('transferStuCount').textContent = '在读学员 ' + stuCount + ' 人';
+  // 填充目标班级下拉（排除当前班级和已毕业班级）
+  const sel = document.getElementById('transferToClass');
+  sel.innerHTML = _classes
+    .filter(x => x.id !== fromCid && x.status !== '已毕业')
+    .sort((a,b) => (a.sort_order||0) - (b.sort_order||0))
+    .map(x => '<option value="' + x.id + '">' + x.name + '（' + (x.phase||'') + '）</option>')
+    .join('');
+  document.getElementById('transferModal').classList.add('show');
+}
+
+async function executeTransfer() {
+  const fromCid = parseInt(document.getElementById('transferFromClassId').value);
+  const toCid = parseInt(document.getElementById('transferToClass').value);
+  if (!toCid) { showToast('请选择目标班级', false); return; }
+  const fromName = _classes.find(c => c.id === fromCid)?.name || '';
+  const toName = _classes.find(c => c.id === toCid)?.name || '';
+  const stuList = _students.filter(s => s.class_id === fromCid && s.status !== '毕业');
+  if (stuList.length === 0) { showToast('没有可转班的在读学员', false); return; }
+  if (!confirm('确认将「' + fromName + '」的 ' + stuList.length + ' 名在读学员转到「' + toName + '」？')) return;
+  let ok = 0, fail = 0;
+  for (const s of stuList) {
+    const { error } = await sb.from('students').update({ class_id: toCid }).eq('id', s.id);
+    if (error) { fail++; } else { s.class_id = toCid; ok++; }
+  }
+  closeModal('transferModal');
+  renderClasses();
+  showToast('转班完成：成功 ' + ok + ' 人' + (fail > 0 ? '，失败 ' + fail + ' 人' : ''));
 }
 
 function openClassModal(cid) {
@@ -567,6 +682,8 @@ function getSchSessions() {
 }
 
 function closeClassModal() { document.getElementById('classModal').classList.remove('show'); }
+
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
 
 async function saveClass() {
   const name = document.getElementById('className').value.trim();
@@ -652,7 +769,10 @@ async function deleteClass(cid) {
 function fillStuClassFilter() {
   const sel = document.getElementById('stuClassFilter');
   sel.innerHTML = '<option value="all">全部班级</option>';
-  getSortedClasses().forEach(c => { sel.innerHTML += '<option value="' + c.id + '">' + c.name + '</option>'; });
+  getSortedClasses().forEach(c => {
+    const tag = c.status === '已毕业' ? '（已毕业）' : '';
+    sel.innerHTML += '<option value="' + c.id + '">' + c.name + tag + '</option>';
+  });
 }
 
 async function renderStudents() {
@@ -726,6 +846,7 @@ async function renderStudents() {
             '<input type="checkbox" ' + (isGrad ? '' : 'checked') + '>' +
             '<span>' + (isGrad ? '已毕业' : '在读') + '</span>' +
             '</label> ' +
+            (!isGrad ? '<button class="btn btn-xs" style="background:#f59e0b;color:#fff" onclick="openRenewalModal(' + s.id + ')" title="续费">💰</button> ' : '') +
             '<button class="btn btn-gray btn-xs" onclick="editStudent(' + s.id + ')">✏️</button> ' +
             '<button class="btn btn-danger btn-xs" onclick="deleteStudent(' + s.id + ')">🗑</button>' +
           '</td></tr>';
@@ -803,6 +924,7 @@ async function renderStudents() {
           '<input type="checkbox" ' + (isGrad ? '' : 'checked') + '>' +
           '<span style="font-size:10px">' + (isGrad ? '毕业' : '在读') + '</span>' +
           '</label> ' +
+          (!isGrad ? '<button class="btn btn-xs" style="background:#f59e0b;color:#fff" onclick="openRenewalModal(' + s.id + ')" title="续费">💰</button> ' : '') +
           '<button class="btn btn-gray btn-xs" onclick="editStudent(' + s.id + ')">✏️</button> ' +
           '<button class="btn btn-danger btn-xs" onclick="deleteStudent(' + s.id + ')">🗑</button>' +
         '</td></tr>';
@@ -820,6 +942,81 @@ async function toggleStatus(sid) {
   await loadAll();
   renderStudents();
   showToast(s.name + ' → ' + newStatus);
+}
+
+// ═══════════ 续费功能 ═══════════
+async function openRenewalModal(sid) {
+  const s = _students.find(x => x.id === sid);
+  if (!s) return;
+  const rem = calcRemaining(sid);
+  const cls = _classes.find(c => c.id === s.class_id);
+  document.getElementById('renewalStuId').value = sid;
+  document.getElementById('renewalStuName').textContent = s.name;
+  document.getElementById('renewalStuInfo').textContent =
+    '班级：' + (cls ? cls.name : '—') + ' ｜ 当前缴费课时：' + (s.paid_hours||0) + ' ｜ 剩余：' + rem;
+  document.getElementById('renewalDate').value = new Date().toISOString().slice(0,10);
+  document.getElementById('renewalHours').value = 0;
+  document.getElementById('renewalAmount').value = 0;
+
+  // 加载该学员的续费历史
+  const histDiv = document.getElementById('renewalHistory');
+  histDiv.innerHTML = '<div style="font-size:12px;color:#64748b;font-weight:600;margin-bottom:6px">续费记录</div>';
+  try {
+    const { data: renewals, error } = await sb.from('renewals').select('*').eq('phone', s.phone||'').order('created_at', { ascending: false });
+    if (renewals && renewals.length > 0) {
+      const rows = renewals.slice(0, 5).map(r =>
+        '<div style="display:flex;justify-content:space-between;padding:4px 8px;font-size:12px;border-bottom:1px solid #f1f5f9">' +
+        '<span>' + (r.payment_date || '—') + '</span>' +
+        '<span>+' + (r.course_hours||0) + ' 课时</span>' +
+        '<span>¥' + (r.total_payment||0) + '</span>' +
+        '</div>'
+      ).join('');
+      histDiv.innerHTML += rows;
+    } else {
+      histDiv.innerHTML += '<div style="font-size:12px;color:#94a3b8;padding:4px 8px">暂无续费记录</div>';
+    }
+  } catch(e) {
+    histDiv.innerHTML += '<div style="font-size:12px;color:#94a3b8;padding:4px 8px">暂无续费记录</div>';
+  }
+
+  document.getElementById('renewalModal').classList.add('show');
+}
+
+async function saveRenewal() {
+  const sid = parseInt(document.getElementById('renewalStuId').value);
+  const s = _students.find(x => x.id === sid);
+  if (!s) return;
+  const hours = parseFloat(document.getElementById('renewalHours').value) || 0;
+  const amount = parseFloat(document.getElementById('renewalAmount').value) || 0;
+  const date = document.getElementById('renewalDate').value || new Date().toISOString().slice(0,10);
+  if (hours <= 0) { showToast('请输入续费课时数', false); return; }
+
+  // 1. 加到 paid_hours
+  const newPaid = (s.paid_hours || 0) + hours;
+  const { error: err1 } = await sb.from('students').update({ paid_hours: newPaid }).eq('id', sid);
+  if (err1) { showToast('更新课时失败: ' + err1.message, false); return; }
+  s.paid_hours = newPaid;
+
+  // 2. 写入 renewals 表留痕
+  const cls = _classes.find(c => c.id === s.class_id);
+  const renewalData = {
+    payment_date: date,
+    student_name: s.name,
+    phone: s.phone || '',
+    current_class: cls ? cls.name : '',
+    payment_package: '续费 ' + hours + ' 课时',
+    course_hours: hours,
+    book_fee: 0,
+    total_payment: amount,
+    unit_price: amount > 0 && hours > 0 ? Math.round(amount / hours * 100) / 100 : 0
+  };
+  try {
+    await sb.from('renewals').insert([renewalData]);
+  } catch(e) { /* renewals表可能不存在，忽略错误 */ }
+
+  closeModal('renewalModal');
+  renderStudents();
+  showToast(s.name + ' 续费 ' + hours + ' 课时成功（当前缴费课时：' + newPaid + '）');
 }
 
 function openStudentModal(sid) {
