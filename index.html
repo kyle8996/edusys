@@ -673,7 +673,7 @@ async function renderStudents() {
   if (isDetailMode) list = list.filter(s => s.class_id === parseInt(filterId));
   if (renewOnly) list = list.filter(s => {
     const rem = calcRemaining(s.id);
-    return s.status !== '毕业' && rem < 15 && rem > 0;
+    return s.status !== '毕业' && rem <= 10 && rem > 0;
   });
   
   if (!isDetailMode) {

@@ -267,7 +267,7 @@ function showStudent(studentId) {
   }
   const progressPct = classTotal > 0 ? Math.min(100, Math.round((classCumulative / classTotal) * 100)) : 0;
 
-  const isWarning = remainHours < 15 && remainHours > 0;
+  const isWarning = remainHours <= 10 && remainHours > 0;
   const isEmpty = remainHours <= 0;
 
   let html = '<div class="header">' +
