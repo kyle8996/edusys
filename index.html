@@ -180,6 +180,9 @@ tr.drag-over-bottom td{box-shadow:inset 0 -3px 0 0 #3b82f6}
       <label class="status-toggle" style="margin-left:12px;font-size:13px">
         <input type="checkbox" id="showGraduated" onchange="renderStudents()"> 显示毕业学员
       </label>
+      <label class="status-toggle" style="margin-left:12px;font-size:13px;color:#c2410c;font-weight:600">
+        <input type="checkbox" id="showRenewOnly" onchange="renderStudents()"> ⚠️ 仅看需续费
+      </label>
       <span id="stuAttControls" style="display:none;margin-left:8px;gap:6px;align-items:center">
         <label style="font-size:12px;margin-left:4px">年：<input type="number" id="stuYearFilter" value="2026" min="2020" max="2030" style="width:60px;padding:4px 8px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px" onchange="renderStudents()"></label>
         <button class="btn btn-success btn-sm" onclick="markStuAllPresent()">一键全勤</button>
@@ -655,6 +658,7 @@ function fillStuClassFilter() {
 async function renderStudents() {
   const filterId = document.getElementById('stuClassFilter').value;
   const showGrad = document.getElementById('showGraduated').checked;
+  const renewOnly = document.getElementById('showRenewOnly')?.checked;
   const year = parseInt(document.getElementById('stuYearFilter')?.value || '2026');
   const isDetailMode = filterId !== 'all';
   const classMap = {};
@@ -667,6 +671,10 @@ async function renderStudents() {
   // 筛选学员
   let list = _students.filter(s => showGrad || s.status !== '毕业');
   if (isDetailMode) list = list.filter(s => s.class_id === parseInt(filterId));
+  if (renewOnly) list = list.filter(s => {
+    const rem = calcRemaining(s.id);
+    return s.status !== '毕业' && rem < 15 && rem > 0;
+  });
   
   if (!isDetailMode) {
     // ═══════════ 全部班级：简洁汇总视图 ═══════════
