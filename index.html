@@ -1510,17 +1510,30 @@ function exportTab(tab) {
 }
 
 function exportClasses() {
-  const headers = ['班级名称', '阶段', '排课频率（节/月）', '阶段总课时', '年前已上', '学员数'];
+  const headers = ['班级名称', '阶段', '老师', '排课频率（节/月）', '阶段总课时', '年前已上', '学员数', '状态'];
   const countMap = {};
   _students.filter(s => s.status !== '毕业').forEach(s => { countMap[s.class_id] = (countMap[s.class_id]||0) + 1; });
-  const rows = _classes.map(c => [
-    c.name,
-    c.phase || '',
-    (c.freq || 0) + '',
-    (c.total_hours || 0) + '',
-    (c.before_hours || 0) + '',
-    (countMap[c.id] || 0) + ''
-  ]);
+  // 按 sort_order 排序（与页面一致）
+  const sortedClasses = [..._classes].sort((a,b) => (a.sort_order||0) - (b.sort_order||0));
+  const rows = sortedClasses.map(c => {
+    const sch = SCHEDULE_DATA.find(s => s.classId === c.id);
+    const teacher = sch ? (sch.teacher||'—') : '—';
+    const cumHours = getClassCumulativeHours(c);
+    let statusText;
+    if (c.status === '已毕业') statusText = '已毕业';
+    else if (cumHours > 0) statusText = '已开课';
+    else statusText = '未开课';
+    return [
+      c.name,
+      c.phase || '',
+      teacher,
+      (c.freq || 0) + '',
+      (c.total_hours || 0) + '',
+      (c.before_hours || 0) + '',
+      (countMap[c.id] || 0) + '',
+      statusText
+    ];
+  });
   exportCSV(headers, rows, '班级管理_教务系统.csv');
 }
 
@@ -1532,18 +1545,36 @@ function exportStudents() {
   _classes.forEach(c => { classMap[c.id] = c.name; });
 
   if (!isDetailMode) {
-    // 全部班级：简洁视图
-    const headers = ['姓名', '班级', '合计已消耗', '缴费课时', '剩余课时'];
+    // 全部班级：按班级分组，与页面显示顺序一致
+    const headers = ['姓名', '班级', '家长手机', '合计已消耗', '缴费课时', '剩余课时'];
+    const showGrad = document.getElementById('showGraduated').checked;
+    const list = _students.filter(s => showGrad || s.status !== '毕业');
+    // 按班级分组
+    const groups = {};
+    list.forEach(s => {
+      const cid = s.class_id || 0;
+      if (!groups[cid]) groups[cid] = [];
+      groups[cid].push(s);
+    });
+    // 按页面相同的班级排序
+    const sortedClassIds = getSortedClasses()
+      .filter(c => groups[c.id])
+      .map(c => c.id);
     const rows = [];
-    _students.filter(s => document.getElementById('showGraduated').checked || s.status !== '毕业').forEach(s => {
-      const rem = calcRemaining(s.id);
-      rows.push([
-        s.name,
-        classMap[s.class_id] || '无班级',
-        ((s.paid_hours||0) - rem).toFixed(1),
-        (s.paid_hours||0) + '',
-        rem + ''
-      ]);
+    sortedClassIds.forEach(cid => {
+      const cname = classMap[parseInt(cid)] || '无班级';
+      groups[cid].sort((a,b) => (a.sort_order||0) - (b.sort_order||0)).forEach(s => {
+        const rem = calcRemaining(s.id);
+        const consumed = (s.paid_hours||0) - rem;
+        rows.push([
+          s.name,
+          cname,
+          s.phone || '',
+          consumed.toFixed(1),
+          (s.paid_hours||0) + '',
+          rem + ''
+        ]);
+      });
     });
     exportCSV(headers, rows, '学员出勤_全部班级.csv');
   } else {
@@ -1587,7 +1618,9 @@ function exportStats() {
   }
   const headers = ['班级', '年前已上'].concat(months.map(m => m + '月排课')).concat(['累计已上', '阶段总课时', '进度(%)', '状态']);
 
-  const rows = _classes.map(c => {
+  // 按 sort_order 排序（与页面一致）
+  const sortedClasses = [..._classes].sort((a,b) => (a.sort_order||0) - (b.sort_order||0));
+  const rows = sortedClasses.map(c => {
     const totalHours = c.total_hours || 0;
     const before = c.before_hours || 0;
     const monthlySum = months.reduce((s, m, i) => s + (c[mkeys[i]] || 0), 0);
@@ -1848,21 +1881,27 @@ function schWeekOffset(delta) {
 }
 
 function exportSchedule() {
-  const headers = ['带班老师','班级','阶段','星期','开始时间','结束时间','开课日期','学员数','剩余名额','状态'];
+  const headers = ['星期','开始时间','结束时间','带班老师','班级','阶段','开课日期','学员数','剩余名额','状态'];
   const rows = [];
+  // 收集所有课程，按星期+开始时间排序（与页面网格从上到下、从左到右一致）
   SCHEDULE_DATA.forEach(sch => {
     const cls = _classes.find(c => c.id === sch.classId);
     const studs = _students.filter(s => s.class_id === sch.classId && s.status !== '毕业');
     const rem = Math.max(0, sch.capacity - studs.length);
-    // 只保留两种状态
     const isOpened = sch.statusOverride !== '未开课' && sch.openDate !== '';
-    sch.sessions.sort((a,b) => a.day - b.day || a.start.localeCompare(b.start));
     sch.sessions.forEach(sess => {
-      rows.push([sch.teacher||'', cls.name, sch.phase + '阶段', DAY_NAMES[sess.day],
-        sess.start, sess.end, sch.openDate||'待定', ''+studs.length, ''+rem, isOpened ? '已开课' : '未开课']);
+      rows.push({
+        day: sess.day,
+        start: sess.start,
+        data: [DAY_NAMES[sess.day], sess.start, sess.end, sch.teacher||'', cls.name, sch.phase + '阶段',
+          sch.openDate||'待定', ''+studs.length, ''+rem, isOpened ? '已开课' : '未开课']
+      });
     });
   });
-  exportCSV(headers, rows, '课程表预览_' + new Date().toISOString().slice(0,10) + '.csv');
+  // 按星期(1-7) + 开始时间排序
+  rows.sort((a, b) => a.day - b.day || a.start.localeCompare(b.start));
+  const exportRows = rows.map(r => r.data);
+  exportCSV(headers, exportRows, '课程表预览_' + new Date().toISOString().slice(0,10) + '.csv');
 }
 
 // ═══ 编辑排课弹窗 ═══
