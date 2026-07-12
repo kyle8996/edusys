@@ -159,6 +159,9 @@ tr.drag-over-bottom td{box-shadow:inset 0 -3px 0 0 #3b82f6}
   <div class="card">
     <h2>班级列表 <button class="btn btn-primary btn-sm" onclick="openClassModal()">＋ 新增班级</button>
       <button class="btn btn-sm" style="background:#f0f9ff;color:#0ea5e9;border:1px solid #bae6fd" onclick="saveClassListSort()">💾 保存排序</button>
+      <label class="status-toggle" style="margin-left:12px;font-size:13px">
+        <input type="checkbox" id="showGraduatedClasses" onchange="renderClasses()"> 显示毕业班级
+      </label>
       <button class="btn btn-gray btn-sm" onclick="exportTab('classes')" style="margin-left:auto">📥 导出</button></h2>
     <div class="summary-bar" id="classSummary"></div>
     <div class="tbl"><table>
@@ -496,19 +499,24 @@ function renderClasses() {
     return getClassCumulativeHours(cls) > 0;
   }).length;
   const notOpenedCount = activeStu.length - openedCount;
+  const gradClassCount = _classes.filter(c => c.status === '已毕业').length;
   document.getElementById('classSummary').innerHTML =
     '<div class="summary-item sc-active"><div class="num">' + activeStu.length + '</div><div class="lbl">在读学员</div></div>' +
     '<div class="summary-item sc-opened"><div class="num">' + openedCount + '</div><div class="lbl">已开课</div><div class="sub">累计排课 &gt; 0</div></div>' +
     '<div class="summary-item sc-notopened"><div class="num">' + notOpenedCount + '</div><div class="lbl">未开课</div><div class="sub">累计排课 = 0</div></div>' +
     '<div class="summary-item sc-grad"><div class="num">' + gradStu.length + '</div><div class="lbl">已毕业</div></div>' +
+    '<div class="summary-item sc-grad"><div class="num">' + gradClassCount + '</div><div class="lbl">已毕业班级</div></div>' +
     '<div class="summary-item sc-shortterm"><div class="num">' + shortTermStu.length + '</div><div class="lbl">短期班学员</div><div class="sub">暑假班等</div></div>';
 
   let html = '';
+  const showGradClasses = document.getElementById('showGraduatedClasses').checked;
   // 按 sort_order 排序（拖拽自定义顺序）
   const sortedClasses = [..._classes].sort((a,b) => (a.sort_order||0) - (b.sort_order||0));
   sortedClasses.forEach(c => {
     const phase = c.phase || '';
     const isGraduated = c.status === '已毕业';
+    // 默认不显示毕业班级，除非勾选显示
+    if (isGraduated && !showGradClasses) return;
     const sch = SCHEDULE_DATA.find(s => s.classId === c.id);
     const teacher = sch ? (sch.teacher||'—') : '—';
     // 判断是否已开课：当年累计排课 > 0
