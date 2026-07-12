@@ -1721,11 +1721,17 @@ function renderSchedule() {
     };
   });
 
+  // 过滤已毕业班级：不显示在课程表一览中
+  const displayData = SCHEDULE_DATA.filter(sch => {
+    const cls = _classes.find(c => c.id === sch.classId);
+    return !cls || cls.status !== '已毕业';
+  });
+
   // ═══ 固定时间网格（每30分钟一行）═══
   const SLOT_MIN = 30; // 每格30分钟
   // 找到最早/最晚时间来确定范围
   let minH = 23, maxH = 8;
-  SCHEDULE_DATA.forEach(sch => {
+  displayData.forEach(sch => {
     (sch.sessions||[]).forEach(sess => {
       const sh = parseInt(sess.start.split(':')[0]);
       const eh = parseInt(sess.end.split(':')[0]) + (parseInt(sess.end.split(':')[1]) > 0 ? 1 : 0);
@@ -1750,7 +1756,7 @@ function renderSchedule() {
   const spanned = {};
   for (let d = 0; d < 7; d++) { occupied[d] = {}; spanned[d] = {}; }
 
-  SCHEDULE_DATA.forEach(sch => {
+  displayData.forEach(sch => {
     (sch.sessions||[]).forEach(sess => {
       const day = sess.day;
       // 找到起始格索引（精确匹配，或找到第一个 >= start 的格）
@@ -1884,7 +1890,12 @@ function exportSchedule() {
   const headers = ['星期','开始时间','结束时间','带班老师','班级','阶段','开课日期','学员数','剩余名额','状态'];
   const rows = [];
   // 收集所有课程，按星期+开始时间排序（与页面网格从上到下、从左到右一致）
-  SCHEDULE_DATA.forEach(sch => {
+  // 过滤已毕业班级，与页面显示一致
+  const displayData = SCHEDULE_DATA.filter(sch => {
+    const cls = _classes.find(c => c.id === sch.classId);
+    return !cls || cls.status !== '已毕业';
+  });
+  displayData.forEach(sch => {
     const cls = _classes.find(c => c.id === sch.classId);
     const studs = _students.filter(s => s.class_id === sch.classId && s.status !== '毕业');
     const rem = Math.max(0, sch.capacity - studs.length);
