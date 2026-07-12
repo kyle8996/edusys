@@ -612,8 +612,17 @@ async function executeTransfer() {
   if (!confirm('确认将「' + fromName + '」的 ' + stuList.length + ' 名在读学员转到「' + toName + '」？')) return;
   let ok = 0, fail = 0;
   for (const s of stuList) {
-    const { error } = await sb.from('students').update({ class_id: toCid }).eq('id', s.id);
-    if (error) { fail++; } else { s.class_id = toCid; ok++; }
+    // 记录转班历史：把原班级追加到学员的 class_history
+    let history = s.class_history;
+    if (!Array.isArray(history)) {
+      try { history = history ? JSON.parse(history) : []; } catch (e) { history = []; }
+    }
+    if (!Array.isArray(history)) history = [];
+    if (!history.find(h => h.class_id === fromCid)) {
+      history.push({ class_id: fromCid, transferred_at: new Date().toISOString() });
+    }
+    const { error } = await sb.from('students').update({ class_id: toCid, class_history: history }).eq('id', s.id);
+    if (error) { fail++; } else { s.class_id = toCid; s.class_history = history; ok++; }
   }
   closeModal('transferModal');
   renderClasses();
