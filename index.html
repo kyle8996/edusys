@@ -34,6 +34,9 @@ tbody td{padding:8px 8px;font-size:13px;text-align:center;border-bottom:1px soli
       #classTbody tr:nth-child(even){background:#f8fafc}
       #classTbody tr:nth-child(even):hover{background:#e2e8f0}
       #classTbody tr:nth-child(odd):hover{background:#f8fafc}
+      #statsTbody tr:nth-child(even){background:#f8fafc}
+      #statsTbody tr:nth-child(even):hover{background:#e2e8f0}
+      #statsTbody tr:nth-child(odd):hover{background:#f8fafc}
 .tag{font-size:10px;padding:2px 8px;border-radius:12px;font-weight:600}
 .tag-k1{background:#dbeafe;color:#1e40af}.tag-k2{background:#d1fae5;color:#065f46}.tag-s{background:#ede9fe;color:#5b21b6}
 .modal-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.4);z-index:200;justify-content:center;align-items:center}
@@ -214,6 +217,9 @@ tr.drag-over-bottom td{box-shadow:inset 0 -3px 0 0 #3b82f6}
   <div class="card">
     <h2>班级排课进度 <button class="btn btn-success btn-sm" onclick="saveClassProgress()">保存修改</button>
       <button class="btn btn-gray btn-sm" onclick="renderClassProgress()">重置</button>
+      <label class="status-toggle" style="margin-left:12px;font-size:13px">
+        <input type="checkbox" id="showGraduatedProgress" onchange="renderClassProgress()"> 显示毕业班级
+      </label>
       <button class="btn btn-gray btn-sm" onclick="exportTab('stats')" style="margin-left:auto">📥 导出</button></h2>
     <div class="tbl"><table><thead><tr id="statsThead">
       <th style="text-align:left">班级</th><th>年前已上</th><th>3月排课</th><th>4月排课</th><th>5月排课</th><th>6月排课</th>
@@ -1239,10 +1245,13 @@ function renderClassProgress() {
   }
   
   let html = '';
+  const showGrad = document.getElementById('showGraduatedProgress')?.checked || false;
   // 按 sort_order 排序
   _classes.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
   
   _classes.forEach(c => {
+    // 默认不显示毕业班级，除非勾选显示
+    if (c.status === '已毕业' && !showGrad) return;
     const totalHours = c.total_hours || 0;
     const before = c.before_hours || 0;
     const monthlySum = months.reduce((s, m, i) => s + (c[mkeys[i]] || 0), 0);
