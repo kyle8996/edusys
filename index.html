@@ -30,7 +30,10 @@ body{font-family:-apple-system,'Microsoft YaHei','PingFang SC',sans-serif;backgr
 table{width:100%;border-collapse:collapse;min-width:700px}
 thead th{background:#f8fafc;padding:10px 8px;font-size:12px;color:#475569;font-weight:600;text-align:center;border-bottom:2px solid #e2e8f0;white-space:nowrap;position:sticky;top:0}
 tbody td{padding:8px 8px;font-size:13px;text-align:center;border-bottom:1px solid #f1f5f9}
-tbody tr:hover{background:#f8fafc}
+      tbody tr:hover{background:#f8fafc}
+      #classTbody tr:nth-child(even){background:#f8fafc}
+      #classTbody tr:nth-child(even):hover{background:#e2e8f0}
+      #classTbody tr:nth-child(odd):hover{background:#f8fafc}
 .tag{font-size:10px;padding:2px 8px;border-radius:12px;font-weight:600}
 .tag-k1{background:#dbeafe;color:#1e40af}.tag-k2{background:#d1fae5;color:#065f46}.tag-s{background:#ede9fe;color:#5b21b6}
 .modal-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.4);z-index:200;justify-content:center;align-items:center}
