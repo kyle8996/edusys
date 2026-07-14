@@ -169,7 +169,7 @@ tr.drag-over-bottom td{box-shadow:inset 0 -3px 0 0 #3b82f6}
     <div class="summary-bar" id="classSummary"></div>
     <div class="tbl"><table>
       <thead><tr>
-        <th style="width:28px">⋮</th><th style="text-align:left;width:140px">班级名称</th><th style="width:60px">阶段</th><th style="width:70px">带班老师</th>
+        <th style="width:28px">⋮</th><th style="width:40px">序号</th><th style="text-align:left;width:140px">班级名称</th><th style="width:60px">阶段</th><th style="width:70px">带班老师</th>
         <th style="width:80px">排课频率</th><th style="width:80px">阶段总课时</th>
         <th style="width:80px">年前已上</th><th style="width:100px">学员数</th>
         <th style="width:120px">操作</th>
@@ -518,7 +518,7 @@ function renderClasses() {
   const showGradClasses = document.getElementById('showGraduatedClasses').checked;
   // 按 sort_order 排序（拖拽自定义顺序）
   const sortedClasses = [..._classes].sort((a,b) => (a.sort_order||0) - (b.sort_order||0));
-  sortedClasses.forEach(c => {
+  sortedClasses.forEach((c, idx) => {
     const phase = c.phase || '';
     const isGraduated = c.status === '已毕业';
     // 默认不显示毕业班级，除非勾选显示
@@ -539,6 +539,7 @@ function renderClasses() {
     const rowStyle = isGraduated ? ' style="opacity:0.5"' : '';
     html += '<tr draggable="true" data-cid="' + c.id + '"' + rowStyle + '>' +
       '<td><span class="drag-hint">⋮⋮</span></td>' +
+      '<td>' + (idx + 1) + '</td>' +
       '<td style="text-align:left;font-weight:600">' + c.name + ' <span class="tag tag-' + (phase||'k1').toLowerCase() + '">' + phase + '阶段</span> ' + statusTag + '</td>' +
       '<td>' + phase + '</td>' +
       '<td><b>' + teacher + '</b></td>' +
@@ -555,7 +556,7 @@ function renderClasses() {
       '<button class="btn btn-gray btn-xs" onclick="editClass(' + c.id + ')">✏️</button> ' +
       '<button class="btn btn-danger btn-xs" onclick="deleteClass(' + c.id + ')">🗑</button></td></tr>';
   });
-  document.getElementById('classTbody').innerHTML = html || '<tr><td colspan="9" style="color:#94a3b8;padding:30px">暂无班级</td></tr>';
+  document.getElementById('classTbody').innerHTML = html || '<tr><td colspan="10" style="color:#94a3b8;padding:30px">暂无班级</td></tr>';
 
   // 绑定班级列表拖拽排序
   initClassDragSort();
@@ -1248,7 +1249,7 @@ function renderClassProgress() {
   // 动态渲染表头
   const thead = document.getElementById('statsThead');
   if (thead) {
-    thead.innerHTML = '<th style="text-align:left">班级</th><th>年前已上</th>' +
+    thead.innerHTML = '<th style="width:40px">序号</th><th style="text-align:left">班级</th><th>年前已上</th>' +
       months.map(m => '<th>' + m + '月排课</th>').join('') +
       '<th>累计已上</th><th>阶段总课时</th><th>进度</th><th>状态</th>';
   }
@@ -1258,7 +1259,7 @@ function renderClassProgress() {
   // 按 sort_order 排序
   _classes.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
   
-  _classes.forEach(c => {
+  _classes.forEach((c, idx) => {
     // 默认不显示毕业班级，除非勾选显示
     if (c.status === '已毕业' && !showGrad) return;
     const totalHours = c.total_hours || 0;
@@ -1286,6 +1287,7 @@ function renderClassProgress() {
     else { barColor = '#f97316'; statusText = '刚起步'; }
     
     html += '<tr draggable="true" data-cid="' + c.id + '">' +
+      '<td>' + (idx + 1) + '</td>' +
       '<td style="text-align:left;font-weight:600"><span class="drag-hint">⋮⋮</span> ' + c.name + '</td>' +
       '<td><input type="number" value="' + before + '" data-cid="' + c.id + '" data-field="before_hours" style="width:60px;text-align:center"></td>' +
       months.map((m, i) => '<td><input type="number" value="' + (c[mkeys[i]]||0) + '" data-cid="' + c.id + '" data-field="' + mkeys[i] + '" style="width:60px;text-align:center"></td>').join('') +
@@ -1539,12 +1541,12 @@ function exportTab(tab) {
 }
 
 function exportClasses() {
-  const headers = ['班级名称', '阶段', '老师', '排课频率（节/月）', '阶段总课时', '年前已上', '学员数', '状态'];
+  const headers = ['序号', '班级名称', '阶段', '老师', '排课频率（节/月）', '阶段总课时', '年前已上', '学员数', '状态'];
   const countMap = {};
   _students.filter(s => s.status !== '毕业').forEach(s => { countMap[s.class_id] = (countMap[s.class_id]||0) + 1; });
   // 按 sort_order 排序（与页面一致）
   const sortedClasses = [..._classes].sort((a,b) => (a.sort_order||0) - (b.sort_order||0));
-  const rows = sortedClasses.map(c => {
+  const rows = sortedClasses.map((c, idx) => {
     const sch = SCHEDULE_DATA.find(s => s.classId === c.id);
     const teacher = sch ? (sch.teacher||'—') : '—';
     const cumHours = getClassCumulativeHours(c);
@@ -1553,6 +1555,7 @@ function exportClasses() {
     else if (cumHours > 0) statusText = '已开课';
     else statusText = '未开课';
     return [
+      (idx + 1) + '',
       c.name,
       c.phase || '',
       teacher,
@@ -1645,11 +1648,11 @@ function exportStats() {
     months.push(m);
     mkeys.push('m' + m);
   }
-  const headers = ['班级', '年前已上'].concat(months.map(m => m + '月排课')).concat(['累计已上', '阶段总课时', '进度(%)', '状态']);
+  const headers = ['序号', '班级', '年前已上'].concat(months.map(m => m + '月排课')).concat(['累计已上', '阶段总课时', '进度(%)', '状态']);
 
   // 按 sort_order 排序（与页面一致）
   const sortedClasses = [..._classes].sort((a,b) => (a.sort_order||0) - (b.sort_order||0));
-  const rows = sortedClasses.map(c => {
+  const rows = sortedClasses.map((c, idx) => {
     const totalHours = c.total_hours || 0;
     const before = c.before_hours || 0;
     const monthlySum = months.reduce((s, m, i) => s + (c[mkeys[i]] || 0), 0);
@@ -1666,6 +1669,7 @@ function exportStats() {
     else { statusText = '刚起步'; }
 
     return [
+      (idx + 1) + '',
       c.name,
       before + '',
       ...mkeys.map(k => (c[k] || 0) + ''),
