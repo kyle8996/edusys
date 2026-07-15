@@ -34,13 +34,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 .student-info .tag{font-size:12px;color:#64748b;margin-top:2px}
 
 /* 课时统计 */
-.stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
 .stat-item{text-align:center;padding:14px 8px;background:#f8fafc;border-radius:10px}
 .stat-item .num{font-size:24px;font-weight:700;color:#1e293b}
 .stat-item .label{font-size:12px;color:#64748b;margin-top:2px}
 .stat-item.used .num{color:#059669}
 .stat-item.remain .num{color:#2563eb}
 .stat-item.warn .num{color:#dc2626}
+.stat-item.leave .num{color:#dc2626}
 
 /* 续费提醒 */
 .alert-box{background:#fef2f2;border:1px solid #fecaca;border-radius:10px;padding:14px;text-align:center;margin-bottom:16px}
@@ -105,7 +106,7 @@ function supabaseFetch(table, select) {
   });
 }
 
-let _students = [], _classes = [], _attendance = [];
+let _students = [], _classes = [], _attendance = [], _leaves = [];
 
 // ═══════════════════════════════════════
 // 页面初始化
@@ -131,26 +132,31 @@ async function loadData() {
     let s1, s2, s3;
     if (typeof supabase !== 'undefined' && supabase.createClient) {
       const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-      const [r1, r2, r3] = await Promise.all([
+      const [r1, r2, r3, r4] = await Promise.all([
         sb.from('students').select('*'),
         sb.from('classes').select('*'),
-        sb.from('attendance').select('*')
+        sb.from('attendance').select('*'),
+        sb.from('leaves').select('*')
       ]);
       if (r1.error || r2.error || r3.error) {
         document.getElementById('app').innerHTML = '<div class="empty-state">数据加载异常：' + (r1.error?.message || r2.error?.message || r3.error?.message) + '</div>';
         return;
       }
-      s1 = r1.data; s2 = r2.data; s3 = r3.data;
+      s1 = r1.data; s2 = r2.data; s3 = r3.data; s4 = r4.data || [];
     } else {
-      [s1, s2, s3] = await Promise.all([
+      let s4;
+      [s1, s2, s3, s4] = await Promise.all([
         supabaseFetch('students', '*'),
         supabaseFetch('classes', '*'),
-        supabaseFetch('attendance', '*')
+        supabaseFetch('attendance', '*'),
+        supabaseFetch('leaves', '*')
       ]);
+      _leaves = Array.isArray(s4) ? s4 : [];
     }
     _students = Array.isArray(s1) ? s1 : [];
     _classes = Array.isArray(s2) ? s2 : [];
     _attendance = Array.isArray(s3) ? s3 : [];
+    _leaves = Array.isArray(s4) ? s4 : [];
   } catch (e) {
     document.getElementById('app').innerHTML = '<div class="empty-state">数据加载失败：' + (e.message || '请检查网络') + '</div>';
   }
@@ -248,6 +254,10 @@ function showStudent(studentId) {
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth() + 1;
 
+  // 本年度请假课时合计
+  const leaves = _leaves.filter(function(l) { return l.student_id === studentId && l.year === currentYear; });
+  const leaveHours = leaves.reduce(function(sum, l) { return sum + (parseFloat(l.hours) || 0); }, 0);
+
   // 生成3月到当前月份的列表，没有出勤记录的月份显示0
   const monthRows = [];
   for (let m = 3; m <= currentMonth; m++) {
@@ -311,6 +321,7 @@ function showStudent(studentId) {
     '<div class="stats-grid">' +
       '<div class="stat-item"><div class="num">' + paidHours + '</div><div class="label">购买课时</div></div>' +
       '<div class="stat-item used"><div class="num">' + usedHours + '</div><div class="label">已上课</div></div>' +
+      '<div class="stat-item leave"><div class="num">' + leaveHours + '</div><div class="label">请假课时</div></div>' +
       '<div class="stat-item remain"><div class="num">' + remainHours + '</div><div class="label">剩余课时</div></div>' +
     '</div>' +
   '</div>';
