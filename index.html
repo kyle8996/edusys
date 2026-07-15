@@ -56,6 +56,8 @@ tbody td{padding:8px 8px;font-size:13px;text-align:center;border-bottom:1px soli
 .stu-att-input{width:42px;padding:3px 2px;border:1px solid #cbd5e1;border-radius:5px;text-align:center;font-size:11px}
 .stu-att-input:focus{outline:none;border-color:#2563eb;background:#f0f7ff}
 .stu-att-input.changed{background:#fef3c7;border-color:#f59e0b}
+.stu-leave-input{width:42px;padding:2px 2px;border:1px solid #fecaca;border-radius:5px;text-align:center;font-size:11px;color:#dc2626}
+.stu-leave-input:focus{outline:none;border-color:#dc2626;background:#fef2f2}
 .pbar{height:6px;background:#e2e8f0;border-radius:3px;overflow:hidden;width:60px;display:inline-block;vertical-align:middle;margin-top:3px}
 .pfill{height:100%;border-radius:3px}
 .toast{position:fixed;top:20px;right:20px;padding:12px 20px;border-radius:10px;color:#fff;font-size:14px;font-weight:600;z-index:300;opacity:0;transform:translateX(20px);transition:.3s;max-width:400px}
@@ -357,7 +359,7 @@ try {
 }
 
 // 数据缓存
-let _classes = [], _students = [], _attendance = [];
+let _classes = [], _students = [], _attendance = [], _leaves = [];
 
 async function syncStatus(msg) {
   document.getElementById('syncStatus').textContent = msg;
@@ -377,13 +379,16 @@ async function loadAll() {
     cr = await sb.from('classes').select('*').order('id');
   }
   
-  const [sr, ar] = await Promise.all([
+  const [sr, ar, lr] = await Promise.all([
     sb.from('students').select('*').order('sort_order'),
-    sb.from('attendance').select('*')
+    sb.from('attendance').select('*'),
+    sb.from('leaves').select('*')
   ]);
   if (cr.error) { showToast('加载班级失败: '+cr.error.message, false); return; }
   if (sr.error) { showToast('加载学员失败: '+sr.error.message, false); return; }
   if (ar.error) { showToast('加载课时失败: '+ar.error.message, false); return; }
+  // leaves 表可能尚未创建，容错：不影响其余功能
+  _leaves = (lr && !lr.error) ? lr.data : [];
   _classes = cr.data; _students = sr.data; _attendance = ar.data;
   
   // 初始化默认 sort_order（如果没有或重复）
@@ -893,17 +898,18 @@ async function renderStudents() {
     const visibleMonths = [];
     for (let m = startMonth; m <= endMonth; m++) visibleMonths.push(m);
     const monthCount = visibleMonths.length;
-    const totalCols = 2 + monthCount + 5; // 拖拽+姓名 + 月份 + 合计+累计已消+缴费+剩余+操作
+    const totalCols = 2 + monthCount + 6; // 拖拽+姓名 + 月份 + 上课合计+请假合计+累计已消+缴费+剩余+操作
     
-    // 表头：拖拽 | 姓名 | 3~当前月 | 年合计 | 累计已消 | 缴费 | 剩余 | 操作
+    // 表头：拖拽 | 姓名 | 3~当前月(上课/请假) | 上课合计 | 请假合计 | 累计已消 | 缴费 | 剩余 | 操作
     let theadHtml = '<tr>' +
       '<th style="width:28px">⋮</th>' +
       '<th style="text-align:left;width:70px">姓名</th>';
     visibleMonths.forEach(m => {
       const isTeaching = m >= 3 && m <= 6;
-      theadHtml += '<th class="att-month-hd"' + (isTeaching ? ' style="background:#e0f0ff;color:#2563eb"' : '') + '>' + m + '月</th>';
+      theadHtml += '<th class="att-month-hd"' + (isTeaching ? ' style="background:#e0f0ff;color:#2563eb"' : '') + '>' + m + '月<br><span style="font-size:9px;font-weight:400">上课/请假</span></th>';
     });
-    theadHtml += '<th style="width:44px;color:#2563eb;font-weight:700">合计</th>' +
+    theadHtml += '<th style="width:44px;color:#2563eb;font-weight:700">上课<br>合计</th>' +
+      '<th style="width:44px;color:#dc2626;font-weight:700">请假<br>合计</th>' +
       '<th style="width:52px">累计已消</th>' +
       '<th style="width:48px">缴费</th>' +
       '<th style="width:48px">剩余</th>' +
@@ -932,17 +938,26 @@ async function renderStudents() {
           (isWarn ? '<span class="badge-warn">续费</span>' : '') + '</td>';
       
       let rowYearTotal = 0;
+      let leaveYearTotal = 0;
       visibleMonths.forEach(m => {
         const rec = _attendance.find(a => a.student_id === s.id && a.year === year && a.month === m);
         const hours = rec ? (rec.hours || 0) : 0;
         rowYearTotal += hours;
+        const leaveRec = _leaves.find(l => l.student_id === s.id && l.year === year && l.month === m);
+        const leaveHours = leaveRec ? (leaveRec.hours || 0) : 0;
+        leaveYearTotal += leaveHours;
         const isTeaching = m >= 3 && m <= 6;
-        html += '<td><input type="number" step="0.5" min="0" value="' + hours + 
-          '" data-sid="' + s.id + '" data-month="' + m + '" class="stu-att-input"' +
-          (isTeaching ? '' : ' style="color:#94a3b8"') + 
-          ' oninput="updateStuRowTotals()"></td>';
+        html += '<td><div style="display:flex;flex-direction:column;gap:3px;align-items:center">' +
+          '<input type="number" step="0.5" min="0" value="' + hours + 
+            '" data-sid="' + s.id + '" data-month="' + m + '" class="stu-att-input"' +
+            (isTeaching ? '' : ' style="color:#94a3b8"') + 
+            ' oninput="updateStuRowTotals()">' +
+          '<input type="number" step="0.5" min="0" value="' + leaveHours + 
+            '" data-sid="' + s.id + '" data-month="' + m + '" class="stu-leave-input"' +
+            ' oninput="updateStuRowTotals()" title="请假课时"></td>';
       });
       html += '<td class="att-total">' + rowYearTotal.toFixed(1) + '</td>' +
+        '<td class="att-leave-total" style="color:#dc2626">' + leaveYearTotal.toFixed(1) + '</td>' +
         '<td>' + consumed.toFixed(1) + '</td>' +
         '<td>' + (s.paid_hours||0) + '</td>' +
         '<td><b style="color:' + (rem <= 10 ? '#f97316' : '#2563eb') + '">' + rem + '</b></td>' +
@@ -1183,13 +1198,20 @@ async function dropStudent(event, targetSid) {
 // ═══════════════════════════════════════
 function updateStuRowTotals() {
   document.querySelectorAll('#stuTbody tr').forEach(tr => {
-    const inputs = tr.querySelectorAll('.stu-att-input');
-    if (inputs.length === 0) return;
-    const totalCell = tr.querySelector('.att-total');
-    if (!totalCell) return;
-    let sum = 0;
-    inputs.forEach(inp => { sum += parseFloat(inp.value) || 0; });
-    totalCell.textContent = sum.toFixed(1);
+    const attInputs = tr.querySelectorAll('.stu-att-input');
+    const leaveInputs = tr.querySelectorAll('.stu-leave-input');
+    const attCell = tr.querySelector('.att-total');
+    const leaveCell = tr.querySelector('.att-leave-total');
+    if (attInputs.length && attCell) {
+      let sum = 0;
+      attInputs.forEach(inp => { sum += parseFloat(inp.value) || 0; });
+      attCell.textContent = sum.toFixed(1);
+    }
+    if (leaveInputs.length && leaveCell) {
+      let lsum = 0;
+      leaveInputs.forEach(inp => { lsum += parseFloat(inp.value) || 0; });
+      leaveCell.textContent = lsum.toFixed(1);
+    }
   });
 }
 
@@ -1212,23 +1234,42 @@ async function saveStuAttendance() {
   if (filterId === 'all') { showToast('请先选择班级', false); return; }
   const cid = parseInt(filterId);
 
-  const inputs = document.querySelectorAll('.stu-att-input');
-  const records = [];
-  inputs.forEach(inp => {
+  const attInputs = document.querySelectorAll('.stu-att-input');
+  const leaveInputs = document.querySelectorAll('.stu-leave-input');
+  const attRecords = [];
+  const leaveRecords = [];
+  attInputs.forEach(inp => {
     const sid = parseInt(inp.dataset.sid);
     const month = parseInt(inp.dataset.month);
     const hours = parseFloat(inp.value) || 0;
-    records.push({ student_id: sid, year: year, month: month, hours: hours });
+    attRecords.push({ student_id: sid, year: year, month: month, hours: hours });
+  });
+  leaveInputs.forEach(inp => {
+    const sid = parseInt(inp.dataset.sid);
+    const month = parseInt(inp.dataset.month);
+    const hours = parseFloat(inp.value) || 0;
+    leaveRecords.push({ student_id: sid, year: year, month: month, hours: hours });
   });
 
-  if (records.length === 0) { showToast('没有可保存的记录', false); return; }
+  if (attRecords.length === 0) { showToast('没有可保存的记录', false); return; }
 
-  const { error } = await sb.from('attendance').upsert(records, { onConflict: 'student_id,year,month' });
+  const { error } = await sb.from('attendance').upsert(attRecords, { onConflict: 'student_id,year,month' });
   if (error) { showToast('保存失败: '+error.message, false); return; }
+
+  // 请假表可能尚未创建，容错处理不阻断上课课时保存
+  let leaveSaved = 0;
+  if (leaveRecords.length > 0) {
+    const { error: lerr } = await sb.from('leaves').upsert(leaveRecords, { onConflict: 'student_id,year,month' });
+    if (lerr) {
+      showToast('上课课时已保存；请假课时保存失败（请先在 Supabase 创建 leaves 表）', false);
+    } else {
+      leaveSaved = leaveRecords.length;
+    }
+  }
 
   await loadAll();
   renderStudents();
-  showToast('已保存 ' + (records.length / 12) + ' 名学员 x 12个月');
+  showToast('已保存 ' + attRecords.length + ' 条上课记录' + (leaveSaved ? '，' + leaveSaved + ' 条请假记录' : ''));
 }
 
 // ═══════════════════════════════════════
@@ -1616,7 +1657,7 @@ function exportStudents() {
     const currentMonth = new Date().getMonth() + 1;
     const monthHeaders = [];
     for (let m = 3; m <= currentMonth; m++) monthHeaders.push(m + '月');
-    const headers = ['姓名'].concat(monthHeaders).concat(['年合计', '累计已消耗', '缴费课时', '剩余课时']);
+    const headers = ['姓名'].concat(monthHeaders).concat(['上课年合计', '请假合计', '累计已消耗', '缴费课时', '剩余课时']);
     const rows = [];
     _students.filter(s => s.class_id === cid && (document.getElementById('showGraduated').checked || s.status !== '毕业'))
       .sort((a,b) => (a.sort_order||0) - (b.sort_order||0))
@@ -1625,13 +1666,16 @@ function exportStudents() {
         const consumed = (s.paid_hours||0) - rem;
         const row = [s.name];
         let yearTotal = 0;
+        let leaveYearTotal = 0;
         for (let m = 3; m <= currentMonth; m++) {
           const rec = _attendance.find(a => a.student_id === s.id && a.year === year && a.month === m);
           const hours = rec ? (rec.hours||0) : 0;
           yearTotal += hours;
+          const lr = _leaves.find(l => l.student_id === s.id && l.year === year && l.month === m);
+          leaveYearTotal += lr ? (lr.hours||0) : 0;
           row.push(hours + '');
         }
-        row.push(yearTotal.toFixed(1), consumed.toFixed(1), (s.paid_hours||0) + '', rem + '');
+        row.push(yearTotal.toFixed(1), leaveYearTotal.toFixed(1), consumed.toFixed(1), (s.paid_hours||0) + '', rem + '');
         rows.push(row);
       });
     exportCSV(headers, rows, '学员出勤_' + cname + '_' + year + '年.csv');
