@@ -53,10 +53,10 @@ tbody td{padding:8px 8px;font-size:13px;text-align:center;border-bottom:1px soli
 .att-table-wrap .att-total{font-weight:700;color:#2563eb;background:#f0f7ff}
 .att-month-hd{background:#f1f5f9;font-size:11px;color:#64748b}
 .att-table-wrap td input.changed{background:#fef3c7;border-color:#f59e0b}
-.stu-att-input{width:42px;padding:3px 2px;border:1px solid #cbd5e1;border-radius:5px;text-align:center;font-size:11px}
+.stu-att-input{width:36px;padding:2px 1px;border:1px solid #cbd5e1;border-radius:4px;text-align:center;font-size:11px}
 .stu-att-input:focus{outline:none;border-color:#2563eb;background:#f0f7ff}
 .stu-att-input.changed{background:#fef3c7;border-color:#f59e0b}
-.stu-leave-input{width:42px;padding:2px 2px;border:1px solid #fecaca;border-radius:5px;text-align:center;font-size:11px;color:#dc2626}
+.stu-leave-input{width:36px;padding:2px 1px;border:1px solid #fecaca;border-radius:4px;text-align:center;font-size:11px;color:#dc2626}
 .stu-leave-input:focus{outline:none;border-color:#dc2626;background:#fef2f2}
 .pbar{height:6px;background:#e2e8f0;border-radius:3px;overflow:hidden;width:60px;display:inline-block;vertical-align:middle;margin-top:3px}
 .pfill{height:100%;border-radius:3px}
@@ -901,22 +901,24 @@ async function renderStudents() {
     const visibleMonths = [];
     for (let m = startMonth; m <= endMonth; m++) visibleMonths.push(m);
     const monthCount = visibleMonths.length;
-    const totalCols = 2 + monthCount + 6; // 拖拽+姓名 + 月份 + 上课合计+请假合计+累计已消+缴费+剩余+操作
+    const totalCols = 2 + monthCount + 5; // 拖拽+姓名 + 月份 + 出勤课时合计+请假合计+缴费课时+剩余课时+操作
     
-    // 表头：拖拽 | 姓名 | 3~当前月(上课/请假) | 上课合计 | 请假合计 | 累计已消 | 缴费 | 剩余 | 操作
+    // 表头：拖拽 | 姓名 | 3~当前月(上课/请假) | 出勤课时合计 | 请假合计 | 缴费课时 | 剩余课时 | 操作
     let theadHtml = '<tr>' +
       '<th style="width:28px">⋮</th>' +
       '<th style="text-align:left;width:70px">姓名</th>';
     visibleMonths.forEach(m => {
       const isTeaching = m >= 3 && m <= 6;
-      theadHtml += '<th class="att-month-hd"' + (isTeaching ? ' style="background:#e0f0ff;color:#2563eb"' : '') + '>' + m + '月<br><span style="font-size:9px;font-weight:400">上课/请假</span></th>';
+      const monthStyle = isTeaching
+        ? 'background:#e0f0ff;color:#2563eb;width:50px;padding:4px 2px'
+        : 'width:50px;padding:4px 2px';
+      theadHtml += '<th class="att-month-hd" style="' + monthStyle + '">' + m + '月<br><span style="font-size:9px;font-weight:400">上课/请假</span></th>';
     });
-    theadHtml += '<th style="width:44px;color:#2563eb;font-weight:700">上课<br>合计</th>' +
+    theadHtml += '<th style="width:50px;color:#2563eb;font-weight:700">出勤课时<br>合计</th>' +
       '<th style="width:44px;color:#dc2626;font-weight:700">请假<br>合计</th>' +
-      '<th style="width:52px">累计已消</th>' +
-      '<th style="width:48px">缴费</th>' +
-      '<th style="width:48px">剩余</th>' +
-      '<th style="width:75px">操作</th></tr>';
+      '<th style="width:52px">缴费课时</th>' +
+      '<th style="width:48px">剩余课时</th>' +
+      '<th style="width:100px">操作</th></tr>';
     document.getElementById('stuThead').innerHTML = theadHtml;
     
     // 表体
@@ -924,7 +926,6 @@ async function renderStudents() {
     
     list.sort((a,b) => (a.sort_order||0) - (b.sort_order||0)).forEach(s => {
       const rem = calcRemaining(s.id);
-      const consumed = (s.paid_hours||0) - rem;
       const isGrad = s.status === '毕业';
       const isWarn = !isGrad && rem <= 10 && rem > 0;
       const rowClass = isGrad ? 'row-grad' : (isWarn ? 'row-warn' : '');
@@ -961,7 +962,6 @@ async function renderStudents() {
       });
       html += '<td class="att-total">' + rowYearTotal.toFixed(1) + '</td>' +
         '<td class="att-leave-total" style="color:#dc2626">' + leaveYearTotal.toFixed(1) + '</td>' +
-        '<td>' + consumed.toFixed(1) + '</td>' +
         '<td>' + (s.paid_hours||0) + '</td>' +
         '<td><b style="color:' + (rem <= 10 ? '#f97316' : '#2563eb') + '">' + rem + '</b></td>' +
         '<td>' +
@@ -1663,13 +1663,12 @@ function exportStudents() {
     const currentMonth = new Date().getMonth() + 1;
     const monthHeaders = [];
     for (let m = 3; m <= currentMonth; m++) monthHeaders.push(m + '月');
-    const headers = ['姓名'].concat(monthHeaders).concat(['上课年合计', '请假合计', '累计已消耗', '缴费课时', '剩余课时']);
+    const headers = ['姓名'].concat(monthHeaders).concat(['出勤课时合计', '请假合计', '缴费课时', '剩余课时']);
     const rows = [];
     _students.filter(s => s.class_id === cid && (document.getElementById('showGraduated').checked || s.status !== '毕业'))
       .sort((a,b) => (a.sort_order||0) - (b.sort_order||0))
       .forEach(s => {
         const rem = calcRemaining(s.id);
-        const consumed = (s.paid_hours||0) - rem;
         const row = [s.name];
         let yearTotal = 0;
         let leaveYearTotal = 0;
@@ -1681,7 +1680,7 @@ function exportStudents() {
           leaveYearTotal += lr ? (lr.hours||0) : 0;
           row.push(hours + '');
         }
-        row.push(yearTotal.toFixed(1), leaveYearTotal.toFixed(1), consumed.toFixed(1), (s.paid_hours||0) + '', rem + '');
+        row.push(yearTotal.toFixed(1), leaveYearTotal.toFixed(1), (s.paid_hours||0) + '', rem + '');
         rows.push(row);
       });
     exportCSV(headers, rows, '学员出勤_' + cname + '_' + year + '年.csv');
