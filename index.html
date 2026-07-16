@@ -852,7 +852,7 @@ async function renderStudents() {
   if (isDetailMode) list = list.filter(s => s.class_id === parseInt(filterId));
   if (renewOnly) list = list.filter(s => {
     const rem = calcRemaining(s.id);
-    return s.status !== '毕业' && rem <= 10 && rem > 0;
+    return s.status !== '毕业' && rem <= 10;
   });
   
   if (!isDetailMode) {
@@ -885,7 +885,7 @@ async function renderStudents() {
         const leaveTotal = _leaves.filter(l => l.student_id === s.id && l.year === year)
           .reduce((sum, l) => sum + (l.hours || 0), 0);
         const isGrad = s.status === '毕业';
-        const isWarn = !isGrad && rem <= 10 && rem > 0;
+        const isWarn = !isGrad && rem <= 10;
         const rowClass = isGrad ? 'row-grad' : (isWarn ? 'row-warn' : '');
         html += '<tr class="' + rowClass + '" draggable="true" ' +
           'ondragstart="dragStart(event,' + s.id + ')" ' +
@@ -954,7 +954,7 @@ async function renderStudents() {
     list.sort((a,b) => (a.sort_order||0) - (b.sort_order||0)).forEach(s => {
       const rem = calcRemaining(s.id);
       const isGrad = s.status === '毕业';
-      const isWarn = !isGrad && rem <= 10 && rem > 0;
+      const isWarn = !isGrad && rem <= 10;
       const rowClass = isGrad ? 'row-grad' : (isWarn ? 'row-warn' : '');
       
       html += '<tr class="' + rowClass + '" data-sid="' + s.id + '" draggable="true" ' +
