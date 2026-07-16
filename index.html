@@ -329,7 +329,7 @@ tr.drag-over-bottom td{box-shadow:inset 0 -3px 0 0 #3b82f6}
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/dist/umd/supabase.min.js"></script>
 <script>
 // 全局错误捕获：防止白屏
 window.onerror = function(msg, url, line, col, err) {
@@ -348,18 +348,28 @@ window.onerror = function(msg, url, line, col, err) {
 const SB_URL = 'https://chasxggorljjqqmficnh.supabase.co';
 const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNoYXN4Z2dvcmxqanFxbWZpY25oIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MTUwMjU3MiwiZXhwIjoyMDk3MDc4NTcyfQ.j6B2y8ZUgsO7WGrv4Aypho4qiqDrwkJ5O0HxiQfvbjY';
 let sb = null;
-try {
+function initSb() {
+  if (sb) return true;
   if (window.supabase && window.supabase.createClient) {
     sb = window.supabase.createClient(SB_URL, SB_KEY);
-  } else {
-    throw new Error('Supabase SDK 未加载（CDN 可能被阻断）');
+    return true;
   }
-} catch(e) {
-  console.error('Supabase 初始化失败:', e.message);
+  return false;
 }
+// SDK 使用 defer 加载，DOM 就绪后再初始化（首次打开不被阻塞）
+if (!initSb()) document.addEventListener('DOMContentLoaded', initSb);
 
 // 数据缓存
 let _classes = [], _students = [], _attendance = [], _leaves = [];
+
+// 客户端缓存：重复打开秒出数（sessionStorage），后台仍会拉取最新数据覆盖
+const _CACHE_PREFIX = 'edusys_cache_';
+function _cacheSet(name, data) {
+  try { sessionStorage.setItem(_CACHE_PREFIX + name, JSON.stringify(data)); } catch(e) {}
+}
+function _cacheGet(name) {
+  try { const s = sessionStorage.getItem(_CACHE_PREFIX + name); return s ? JSON.parse(s) : null; } catch(e) { return null; }
+}
 
 async function syncStatus(msg) {
   document.getElementById('syncStatus').textContent = msg;
@@ -372,24 +382,41 @@ async function loadAll() {
     return;
   }
   syncStatus('加载中...');
-  
-  // 尝试读取 sort_order，如果不存在则降级到 id
-  let cr = await sb.from('classes').select('*, sort_order').order('sort_order');
-  if (cr.error) {
-    cr = await sb.from('classes').select('*').order('id');
+
+  // 先用缓存即时出数（重复打开秒开），后台再拉最新数据覆盖
+  const cC = _cacheGet('classes'), cS = _cacheGet('students'), cA = _cacheGet('attendance'), cL = _cacheGet('leaves');
+  if (cC || cS) {
+    if (cC) _classes = cC;
+    if (cS) _students = cS;
+    if (cA) _attendance = cA;
+    if (cL) _leaves = cL;
+    initApp(); // 先渲染缓存
   }
-  
-  const [sr, ar, lr] = await Promise.all([
+
+  // 单批次并行加载全部表，减少往返；attendance/leaves 仅取必要字段降低传输量
+  const [cr, sr, ar, lr] = await Promise.all([
+    sb.from('classes').select('*, sort_order').order('sort_order'),
     sb.from('students').select('*').order('sort_order'),
-    sb.from('attendance').select('*'),
-    sb.from('leaves').select('*')
+    sb.from('attendance').select('id,student_id,year,month,hours'),
+    sb.from('leaves').select('id,student_id,year,month,hours')
   ]);
-  if (cr.error) { showToast('加载班级失败: '+cr.error.message, false); return; }
+  if (cr.error) {
+    const cr2 = await sb.from('classes').select('*').order('id');
+    _classes = cr2.data || [];
+  } else {
+    _classes = cr.data;
+  }
   if (sr.error) { showToast('加载学员失败: '+sr.error.message, false); return; }
   if (ar.error) { showToast('加载课时失败: '+ar.error.message, false); return; }
   // leaves 表可能尚未创建，容错：不影响其余功能
   _leaves = (lr && !lr.error) ? lr.data : [];
-  _classes = cr.data; _students = sr.data; _attendance = ar.data;
+  _students = sr.data; _attendance = ar.data;
+
+  // 写入缓存供下次秒开
+  _cacheSet('classes', _classes);
+  _cacheSet('students', _students);
+  _cacheSet('attendance', _attendance);
+  _cacheSet('leaves', _leaves);
   
   // 初始化默认 sort_order（如果没有或重复）
   const used = new Set();
@@ -2137,6 +2164,7 @@ const SCHEDULE_VERSION = 6;
 })();
 
 function doLogin() {
+  initSb();
   const input = document.getElementById('loginPwd').value;
   if (input === LOGIN_PWD) {
     sessionStorage.setItem('edusys_logged_in', '1');
@@ -2151,11 +2179,15 @@ function doLogin() {
 }
 
 // 自动检测是否已登录（当前浏览器标签页有效）
-if (sessionStorage.getItem('edusys_logged_in') === '1') {
-  document.getElementById('loginOverlay').style.display = 'none';
-  document.getElementById('app').style.display = 'block';
-  loadAll();
+function bootIfLoggedIn() {
+  if (sessionStorage.getItem('edusys_logged_in') === '1') {
+    document.getElementById('loginOverlay').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    loadAll();
+  }
 }
+if (typeof supabase !== 'undefined') bootIfLoggedIn();
+else document.addEventListener('DOMContentLoaded', bootIfLoggedIn);
 </script>
 </body>
 </html>
