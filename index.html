@@ -194,6 +194,7 @@ tr.drag-over-bottom td{box-shadow:inset 0 -3px 0 0 #3b82f6}
       <label class="status-toggle" style="margin-left:12px;font-size:13px;color:#c2410c;font-weight:600">
         <input type="checkbox" id="showRenewOnly" onchange="renderStudents()"> ⚠️ 仅看需续费
       </label>
+      <input type="text" id="stuNameSearch" placeholder="搜索姓名" oninput="renderStudents()" style="margin-left:12px;padding:5px 10px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;width:120px">
       <span id="stuAttControls" style="display:none;margin-left:8px;gap:6px;align-items:center">
         <label style="font-size:12px;margin-left:4px">年：<input type="number" id="stuYearFilter" value="2026" min="2020" max="2030" style="width:60px;padding:4px 8px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px" onchange="renderStudents()"></label>
         <button class="btn btn-success btn-sm" onclick="markStuAllPresent()">一键全勤</button>
@@ -838,6 +839,7 @@ async function renderStudents() {
   const filterId = document.getElementById('stuClassFilter').value;
   const showGrad = document.getElementById('showGraduated').checked;
   const renewOnly = document.getElementById('showRenewOnly')?.checked;
+  const nameQuery = (document.getElementById('stuNameSearch')?.value || '').trim();
   const year = parseInt(document.getElementById('stuYearFilter')?.value || '2026');
   const isDetailMode = filterId !== 'all';
   const classMap = {};
@@ -850,6 +852,10 @@ async function renderStudents() {
   // 筛选学员
   let list = _students.filter(s => showGrad || s.status !== '毕业');
   if (isDetailMode) list = list.filter(s => s.class_id === parseInt(filterId));
+  if (nameQuery) {
+    const q = nameQuery.toLowerCase();
+    list = list.filter(s => (s.name || '').toLowerCase().includes(q));
+  }
   if (renewOnly) list = list.filter(s => {
     const rem = calcRemaining(s.id);
     return s.status !== '毕业' && rem <= 10;
