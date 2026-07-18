@@ -130,6 +130,7 @@ tr.drag-over-bottom td{box-shadow:inset 0 -3px 0 0 #3b82f6}
   <div class="login-box">
     <h2>🔐 DK·邻里 教务系统</h2>
     <div class="sub">请输入密码以访问系统</div>
+    <input type="text" id="loginUser" autocomplete="username" tabindex="-1" aria-hidden="true" style="position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;pointer-events:none;border:0;padding:0">
     <input type="password" id="loginPwd" autocomplete="current-password" placeholder="输入密码" onkeydown="if(event.key==='Enter')doLogin()" autofocus>
     <div class="err-msg" id="loginErr">密码错误，请重试</div>
     <button class="btn-login" onclick="doLogin()">登 录</button>
@@ -2176,6 +2177,7 @@ function doLogin() {
     sessionStorage.setItem('edusys_logged_in', '1');
     document.getElementById('loginOverlay').style.display = 'none';
     document.getElementById('app').style.display = 'block';
+    const _s = document.getElementById('stuNameSearch'); if (_s) _s.value = '';
     loadAll();
   } else {
     document.getElementById('loginErr').style.display = 'block';
@@ -2189,6 +2191,7 @@ function bootIfLoggedIn() {
   if (sessionStorage.getItem('edusys_logged_in') === '1') {
     document.getElementById('loginOverlay').style.display = 'none';
     document.getElementById('app').style.display = 'block';
+    const _s = document.getElementById('stuNameSearch'); if (_s) _s.value = '';
     loadAll();
   }
 }
