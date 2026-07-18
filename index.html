@@ -189,8 +189,8 @@ tr.drag-over-bottom td{box-shadow:inset 0 -3px 0 0 #3b82f6}
       <select id="stuClassFilter" onchange="renderStudents()" style="margin-left:12px;padding:6px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px">
         <option value="all">全部班级</option>
       </select>
-      <label class="status-toggle" style="margin-left:12px;font-size:13px">
-        <input type="checkbox" id="showGraduated" onchange="renderStudents()"> 显示毕业学员
+      <label class="status-toggle" style="margin-left:12px;font-size:13px;color:#7c3aed;font-weight:600">
+        <input type="checkbox" id="showGraduated" onchange="renderStudents()"> 🎓 仅看毕业学员
       </label>
       <label class="status-toggle" style="margin-left:12px;font-size:13px;color:#c2410c;font-weight:600">
         <input type="checkbox" id="showRenewOnly" onchange="renderStudents()"> ⚠️ 仅看需续费
@@ -850,8 +850,8 @@ async function renderStudents() {
   const attControls = document.getElementById('stuAttControls');
   if (attControls) attControls.style.display = isDetailMode ? 'inline-flex' : 'none';
   
-  // 筛选学员
-  let list = _students.filter(s => showGrad || s.status !== '毕业');
+  // 筛选学员：「仅看毕业学员」开关打开时只显示毕业学员，关闭时隐藏毕业学员（与「仅看需续费」一致）
+  let list = _students.filter(s => showGrad ? s.status === '毕业' : s.status !== '毕业');
   if (isDetailMode) list = list.filter(s => s.class_id === parseInt(filterId));
   if (nameQuery) {
     const q = nameQuery.toLowerCase();
