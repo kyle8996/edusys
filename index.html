@@ -528,8 +528,6 @@ function renderClasses() {
     const cls = _classes.find(c => c.id === s.class_id);
     return cls && cls.status !== '已毕业';
   });
-  // 短期班学员
-  const shortTermStu = allActiveStu.filter(s => shortTermPhaseIds.has(s.class_id));
   const gradStu = _students.filter(s => s.status === '毕业');
   // 已开课 = 常规在读 + 班级累计排课 > 0（排除短期班）
   const openedCount = activeStu.filter(s => {
@@ -544,8 +542,7 @@ function renderClasses() {
     '<div class="summary-item sc-opened"><div class="num">' + openedCount + '</div><div class="lbl">已开课</div><div class="sub">累计排课 &gt; 0</div></div>' +
     '<div class="summary-item sc-notopened"><div class="num">' + notOpenedCount + '</div><div class="lbl">未开课</div><div class="sub">累计排课 = 0</div></div>' +
     '<div class="summary-item sc-grad"><div class="num">' + gradStu.length + '</div><div class="lbl">已毕业</div></div>' +
-    '<div class="summary-item sc-grad"><div class="num">' + gradClassCount + '</div><div class="lbl">已毕业班级</div></div>' +
-    '<div class="summary-item sc-shortterm"><div class="num">' + shortTermStu.length + '</div><div class="lbl">短期班学员</div><div class="sub">暑假班等</div></div>';
+    '<div class="summary-item sc-grad"><div class="num">' + gradClassCount + '</div><div class="lbl">已毕业班级</div></div>';
 
   let html = '';
   const showGradClasses = document.getElementById('showGraduatedClasses').checked;
