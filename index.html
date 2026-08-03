@@ -96,6 +96,9 @@ tr.drag-over-bottom td{box-shadow:inset 0 -3px 0 0 #3b82f6}
 .summary-item .num:hover .summary-tip{display:block}
 .summary-tip-title{color:#fff;font-weight:700;margin-bottom:4px;border-bottom:1px solid #475569;padding-bottom:4px;font-size:13px}
 .summary-tip-item{padding:1px 0;color:#e2e8f0}
+.summary-tip-group{padding:3px 0;border-bottom:1px dashed #475569}
+.summary-tip-group:last-child{border-bottom:none}
+.summary-tip-cls{display:inline-block;min-width:74px;color:#fbbf24;font-weight:600}
 .summary-tip::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:6px solid transparent;border-top-color:#1e293b}
 
 /* ═══ 课程表预览 ═══ */
@@ -522,6 +525,16 @@ function renderSummaryTip(title, items) {
   return '<div class="summary-tip"><div class="summary-tip-title">' + title + '（' + items.length + '）</div>' + items.map(item => '<div class="summary-tip-item">' + item + '</div>').join('') + '</div>';
 }
 
+// 生成按班级分组的汇总卡片悬浮提示
+function renderSummaryTipGrouped(title, groups) {
+  const total = groups.reduce((a, g) => a + g.students.length, 0);
+  if (!groups.length) {
+    return '<div class="summary-tip"><div class="summary-tip-title">' + title + '（0）</div><div class="summary-tip-item">无</div></div>';
+  }
+  const body = groups.map(g => '<div class="summary-tip-group"><span class="summary-tip-cls">' + g.className + '</span>' + g.students.join('、') + '</div>').join('');
+  return '<div class="summary-tip"><div class="summary-tip-title">' + title + '（' + total + '）</div>' + body + '</div>';
+}
+
 // ═══════════════════════════════════════
 // Tab 1: 班级管理
 // ═══════════════════════════════════════
@@ -551,10 +564,25 @@ function renderClasses() {
   }).length;
   const notOpenedCount = activeStu.length - openedCount;
   const gradClassCount = gradClassList.length;
+  // 未开课学员（按班级分组，供悬浮预览）
+  const notOpenedStu = activeStu.filter(s => {
+    const cls = _classes.find(c => c.id === s.class_id);
+    return !cls || getClassCumulativeHours(cls) === 0;
+  });
+  const notOpenedGroupsMap = {};
+  notOpenedStu.forEach(s => {
+    const cls = _classes.find(c => c.id === s.class_id);
+    const key = s.class_id || 0;
+    const clsName = cls ? (cls.name || '未分配班级') : '未分配班级';
+    const sortOrder = cls ? (cls.sort_order || 0) : 9999;
+    if (!notOpenedGroupsMap[key]) notOpenedGroupsMap[key] = { className: clsName, sortOrder: sortOrder, students: [] };
+    notOpenedGroupsMap[key].students.push(s.name || '—');
+  });
+  const notOpenedGroups = Object.values(notOpenedGroupsMap).sort((a, b) => a.sortOrder - b.sortOrder);
   document.getElementById('classSummary').innerHTML =
     '<div class="summary-item sc-active"><div class="num">' + activeStu.length + '</div><div class="lbl">在读学员</div></div>' +
     '<div class="summary-item sc-opened"><div class="num">' + openedCount + '</div><div class="lbl">已开课</div><div class="sub">累计排课 &gt; 0</div></div>' +
-    '<div class="summary-item sc-notopened"><div class="num">' + notOpenedCount + '</div><div class="lbl">未开课</div><div class="sub">累计排课 = 0</div></div>' +
+    '<div class="summary-item sc-notopened"><div class="num">' + notOpenedCount + renderSummaryTipGrouped('未开课学员', notOpenedGroups) + '</div><div class="lbl">未开课</div><div class="sub">累计排课 = 0</div></div>' +
     '<div class="summary-item sc-grad"><div class="num">' + gradStu.length + renderSummaryTip('已毕业学员', gradStu.map(s => s.name || '—')) + '</div><div class="lbl">已毕业</div></div>' +
     '<div class="summary-item sc-grad"><div class="num">' + gradClassCount + renderSummaryTip('已毕业班级', gradClassList.map(c => c.name || '—')) + '</div><div class="lbl">已毕业班级</div></div>';
 
