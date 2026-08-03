@@ -88,10 +88,15 @@ tr.drag-over-bottom td{box-shadow:inset 0 -3px 0 0 #3b82f6}
 .login-box .btn-login:hover{background:#1d4ed8}
 .summary-bar{display:flex;gap:14px;margin-bottom:16px;flex-wrap:wrap}
 .summary-item{flex:1;min-width:130px;background:#f8fafc;border-radius:10px;padding:14px 18px;text-align:center;border:1px solid #e2e8f0}
-.summary-item .num{font-size:28px;font-weight:800;line-height:1.2}
+.summary-item .num{font-size:28px;font-weight:800;line-height:1.2;position:relative;cursor:help}
 .summary-item .lbl{font-size:11px;color:#64748b;margin-top:2px}
 .summary-item .sub{font-size:11px;color:#94a3b8;margin-top:1px}
 .sc-active .num{color:#2563eb}.sc-opened .num{color:#10b981}.sc-notopened .num{color:#94a3b8}.sc-grad .num{color:#8b5cf6}.sc-shortterm .num{color:#f59e0b}
+.summary-tip{display:none;position:absolute;z-index:9999;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:8px;min-width:160px;max-width:280px;background:#1e293b;color:#e2e8f0;border-radius:10px;padding:10px 14px;font-size:12px;line-height:1.6;box-shadow:0 8px 30px rgba(0,0,0,.4);text-align:left;white-space:normal;font-weight:400}
+.summary-item .num:hover .summary-tip{display:block}
+.summary-tip-title{color:#fff;font-weight:700;margin-bottom:4px;border-bottom:1px solid #475569;padding-bottom:4px;font-size:13px}
+.summary-tip-item{padding:1px 0;color:#e2e8f0}
+.summary-tip::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:6px solid transparent;border-top-color:#1e293b}
 
 /* ═══ 课程表预览 ═══ */
 .sch-grid{border-collapse:collapse;width:100%;table-layout:fixed}
@@ -509,6 +514,14 @@ function switchTab(tab) {
   if (tab==='schedule') renderSchedule();
 }
 
+// 生成汇总卡片悬浮提示（已毕业学员/已毕业班级等）
+function renderSummaryTip(title, items) {
+  if (!items.length) {
+    return '<div class="summary-tip"><div class="summary-tip-title">' + title + '（0）</div><div class="summary-tip-item">无</div></div>';
+  }
+  return '<div class="summary-tip"><div class="summary-tip-title">' + title + '（' + items.length + '）</div>' + items.map(item => '<div class="summary-tip-item">' + item + '</div>').join('') + '</div>';
+}
+
 // ═══════════════════════════════════════
 // Tab 1: 班级管理
 // ═══════════════════════════════════════
@@ -529,6 +542,7 @@ function renderClasses() {
     return cls && cls.status !== '已毕业';
   });
   const gradStu = _students.filter(s => s.status === '毕业');
+  const gradClassList = _classes.filter(c => c.status === '已毕业');
   // 已开课 = 常规在读 + 班级累计排课 > 0（排除短期班）
   const openedCount = activeStu.filter(s => {
     const cls = _classes.find(c => c.id === s.class_id);
@@ -536,13 +550,13 @@ function renderClasses() {
     return getClassCumulativeHours(cls) > 0;
   }).length;
   const notOpenedCount = activeStu.length - openedCount;
-  const gradClassCount = _classes.filter(c => c.status === '已毕业').length;
+  const gradClassCount = gradClassList.length;
   document.getElementById('classSummary').innerHTML =
     '<div class="summary-item sc-active"><div class="num">' + activeStu.length + '</div><div class="lbl">在读学员</div></div>' +
     '<div class="summary-item sc-opened"><div class="num">' + openedCount + '</div><div class="lbl">已开课</div><div class="sub">累计排课 &gt; 0</div></div>' +
     '<div class="summary-item sc-notopened"><div class="num">' + notOpenedCount + '</div><div class="lbl">未开课</div><div class="sub">累计排课 = 0</div></div>' +
-    '<div class="summary-item sc-grad"><div class="num">' + gradStu.length + '</div><div class="lbl">已毕业</div></div>' +
-    '<div class="summary-item sc-grad"><div class="num">' + gradClassCount + '</div><div class="lbl">已毕业班级</div></div>';
+    '<div class="summary-item sc-grad"><div class="num">' + gradStu.length + renderSummaryTip('已毕业学员', gradStu.map(s => s.name || '—')) + '</div><div class="lbl">已毕业</div></div>' +
+    '<div class="summary-item sc-grad"><div class="num">' + gradClassCount + renderSummaryTip('已毕业班级', gradClassList.map(c => c.name || '—')) + '</div><div class="lbl">已毕业班级</div></div>';
 
   let html = '';
   const showGradClasses = document.getElementById('showGraduatedClasses').checked;
