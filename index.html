@@ -1031,7 +1031,8 @@ async function renderStudents() {
     list.sort((a,b) => (a.sort_order||0) - (b.sort_order||0)).forEach(s => {
       const rem = calcRemaining(s.id);
       const isGrad = s.status === '毕业';
-      const isWarn = !isGrad && rem <= 10;
+      const isSummer = cls && isSummerClass(cls);
+      const isWarn = !isGrad && !isSummer && rem <= 10;
       const rowClass = isGrad ? 'row-grad' : (isWarn ? 'row-warn' : '');
       
       html += '<tr class="' + rowClass + '" data-sid="' + s.id + '" draggable="true" ' +
@@ -1073,7 +1074,7 @@ async function renderStudents() {
           '<input type="checkbox" ' + (isGrad ? '' : 'checked') + '>' +
           '<span style="font-size:10px">' + (isGrad ? '毕业' : '在读') + '</span>' +
           '</label> ' +
-          (!isGrad ? '<button class="btn btn-xs" style="background:#f59e0b;color:#fff" onclick="openRenewalModal(' + s.id + ')" title="续费">💰</button> ' : '') +
+          (!isGrad && !isSummer ? '<button class="btn btn-xs" style="background:#f59e0b;color:#fff" onclick="openRenewalModal(' + s.id + ')" title="续费">💰</button> ' : '') +
           '<button class="btn btn-gray btn-xs" onclick="editStudent(' + s.id + ')">✏️</button> ' +
           '<button class="btn btn-danger btn-xs" onclick="deleteStudent(' + s.id + ')">🗑</button>' +
         '</td></tr>';
