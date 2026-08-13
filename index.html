@@ -496,6 +496,11 @@ function getClassStageRank(c) {
   return 99;
 }
 
+// 判断是否为暑假班（短期班）
+function isSummerClass(c) {
+  return getClassStageRank(c) === 8;
+}
+
 // 班级排序：按阶段(K1→K2→S1→S2→S3→S4→S5→S6→暑假班)，已毕业放最下，再按名称数字排序
 function sortClassesByPhase(a, b) {
   // 0. 已毕业班级排到最后
@@ -557,8 +562,7 @@ function renderSummaryTipGrouped(title, groups) {
 // ═══════════════════════════════════════
 function renderClasses() {
   // 识别短期班（暑假班等）：phase=暑假，或名称含 暑假/暑期/SH
-  const isShortTermClass = c => getClassStageRank(c) === 8;
-  const shortTermPhaseIds = new Set(_classes.filter(isShortTermClass).map(c => c.id));
+  const shortTermPhaseIds = new Set(_classes.filter(isSummerClass).map(c => c.id));
   // 修复: 只统计在读学员，排除已毕业
   const countMap = {};
   _students.filter(s => s.status !== '毕业').forEach(s => { countMap[s.class_id] = (countMap[s.class_id]||0) + 1; });
@@ -906,16 +910,24 @@ async function renderStudents() {
   const attControls = document.getElementById('stuAttControls');
   if (attControls) attControls.style.display = isDetailMode ? 'inline-flex' : 'none';
   
-  // 筛选学员：「仅看毕业学员」开关打开时只显示毕业学员，关闭时隐藏毕业学员（与「仅看需续费」一致）
-  let list = _students.filter(s => showGrad ? s.status === '毕业' : s.status !== '毕业');
+  // 筛选学员：默认隐藏毕业学员与已毕业班级的学员；勾选「仅看毕业学员」后显示
+  let list = _students.filter(s => {
+    const cls = _classes.find(c => c.id === s.class_id);
+    const isGradClass = cls && cls.status === '已毕业';
+    const isGradStu = s.status === '毕业';
+    if (showGrad) return isGradStu || isGradClass;
+    return !isGradStu && !isGradClass;
+  });
   if (isDetailMode) list = list.filter(s => s.class_id === parseInt(filterId));
   if (nameQuery) {
     const q = nameQuery.toLowerCase();
     list = list.filter(s => (s.name || '').toLowerCase().includes(q));
   }
   if (renewOnly) list = list.filter(s => {
+    const cls = _classes.find(c => c.id === s.class_id);
+    const isSummer = cls && isSummerClass(cls);
     const rem = calcRemaining(s.id);
-    return s.status !== '毕业' && rem <= 10;
+    return s.status !== '毕业' && !isSummer && rem <= 10;
   });
   
   if (!isDetailMode) {
@@ -948,7 +960,9 @@ async function renderStudents() {
         const leaveTotal = _leaves.filter(l => l.student_id === s.id && l.year === year)
           .reduce((sum, l) => sum + (l.hours || 0), 0);
         const isGrad = s.status === '毕业';
-        const isWarn = !isGrad && rem <= 10;
+        const clsObj = _classes.find(c => c.id === s.class_id);
+        const isSummer = clsObj && isSummerClass(clsObj);
+        const isWarn = !isGrad && !isSummer && rem <= 10;
         const rowClass = isGrad ? 'row-grad' : (isWarn ? 'row-warn' : '');
         html += '<tr class="' + rowClass + '" draggable="true" ' +
           'ondragstart="dragStart(event,' + s.id + ')" ' +
