@@ -2121,8 +2121,8 @@ function hideSchTip(el) {
   const tip = el.querySelector('.sch-tip');
   if (!tip) return;
   if (el._schHideTimer) { clearTimeout(el._schHideTimer); }
-  // 挪开鼠标 1 秒后隐藏
-  el._schHideTimer = setTimeout(() => { tip.style.display = 'none'; }, 1000);
+  // 挪开鼠标 120ms 后隐藏
+  el._schHideTimer = setTimeout(() => { tip.style.display = 'none'; }, 120);
 }
 
 function schWeekOffset(delta) {
