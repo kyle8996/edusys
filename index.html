@@ -108,7 +108,7 @@ tr.drag-over-bottom td{box-shadow:inset 0 -3px 0 0 #3b82f6}
 .sch-grid thead th.day-hd{font-size:11px;background:#f1f5f9;color:#1e293b}
 .sch-cell{position:relative;padding:0!important;height:20px}
 .sch-block{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1px 3px;border-radius:4px;font-size:9.5px;font-weight:600;cursor:pointer;transition:.15s;line-height:1.2;white-space:nowrap;height:100%;box-sizing:border-box;margin:0 1px}
-.sch-block:hover{transform:scale(1.02);box-shadow:0 2px 10px rgba(0,0,0,.18);z-index:10}
+.sch-block:hover{box-shadow:0 2px 10px rgba(0,0,0,.18);z-index:10}
 .sch-k1{background:linear-gradient(135deg,#dbeafe,#bfdbfe);color:#1e40af;border:1px solid #93c5fd}
 .sch-k2{background:linear-gradient(135deg,#cffafe,#a5f3fc);color:#155e75;border:1px solid #67e8f9}
 .sch-s{background:linear-gradient(135deg,#dcfce7,#bbf7d0);color:#166534;border:1px solid #86efac}
@@ -126,8 +126,7 @@ tr.drag-over-bottom td{box-shadow:inset 0 -3px 0 0 #3b82f6}
 .sch-col-stat{font-size:11px;color:#94a3b8;margin-left:auto;white-space:nowrap}
 .sch-time{font-size:8px;opacity:.75;font-weight:400;margin-top:0}
 .sch-block{position:relative} /* 为 tooltip 提供定位上下文 */
-.sch-tip{display:none;position:absolute;z-index:9999;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:6px;min-width:200px;max-width:260px;background:#1e293b;color:#e2e8f0;border-radius:10px;padding:10px 12px;font-size:11px;line-height:1.45;box-shadow:0 8px 30px rgba(0,0,0,.4);pointer-events:auto}
-.sch-block:hover .sch-tip{display:block}
+.sch-tip{display:none;position:fixed;z-index:99999;min-width:200px;max-width:260px;background:#1e293b;color:#e2e8f0;border-radius:10px;padding:10px 12px;font-size:11px;line-height:1.45;box-shadow:0 8px 30px rgba(0,0,0,.4);pointer-events:auto}
 .sch-tip h4{color:#fff;margin-bottom:4px;font-size:12px;border-bottom:1px solid #475569;padding-bottom:4px}
 .sch-tip-row{display:flex;justify-content:space-between;padding:1px 0}
 .sch-tip-lbl{color:#94a3b8}
@@ -2098,8 +2097,30 @@ function schTipHtml(cell, d) {
     '</div>';
 }
 
-function showSchTip(el) { /* CSS hover already handles this */ }
-function hideSchTip(el) { /* CSS handles */ }
+let _schTipTimer = null;
+function showSchTip(el) {
+  if (_schTipTimer) { clearTimeout(_schTipTimer); _schTipTimer = null; }
+  const tip = el.querySelector('.sch-tip');
+  if (!tip) return;
+  tip.style.display = 'block';
+  const tw = tip.offsetWidth, th = tip.offsetHeight;
+  const r = el.getBoundingClientRect();
+  const vw = window.innerWidth, vh = window.innerHeight, gap = 6;
+  // 垂直：优先放上方；上方放不下则放下方；都放不下则居中并夹在视口内
+  let top;
+  if (r.top - th - gap >= 0) top = r.top - th - gap;
+  else if (r.bottom + th + gap <= vh) top = r.bottom + gap;
+  else top = Math.max(gap, Math.min(vh - th - gap, (r.top + r.bottom) / 2 - th / 2));
+  // 水平：以课程块为中心，必要时夹到视口内，保证不超左右边界
+  let left = r.left + r.width / 2 - tw / 2;
+  left = Math.max(gap, Math.min(vw - tw - gap, left));
+  tip.style.left = left + 'px';
+  tip.style.top = top + 'px';
+}
+function hideSchTip(el) {
+  const tip = el.querySelector('.sch-tip');
+  if (tip) _schTipTimer = setTimeout(() => { tip.style.display = 'none'; }, 120);
+}
 
 function schWeekOffset(delta) {
   _schWeekOffset += delta;
