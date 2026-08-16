@@ -1977,8 +1977,9 @@ function renderSchedule() {
     const tData = displayData.filter(sch => sch.teacher === teacher);
     let lessonCount = 0;
     tData.forEach(sch => lessonCount += (sch.sessions || []).length);
+    const classCount = new Set(tData.map(sch => sch.classId)).size;
     const avatarColor = teacher === 'Dora' ? '#6366f1' : (teacher === 'Cindy' ? '#a855f7' : '#0ea5e9');
-    columnsHtml += renderSchColumn(teacher, tData, avatarColor, tData.length, lessonCount, ws, timeGrid, classStats, SLOT_MIN);
+    columnsHtml += renderSchColumn(teacher, tData, avatarColor, classCount, lessonCount, ws, timeGrid, classStats, SLOT_MIN);
   });
 
   if (teachers.length === 0) {
