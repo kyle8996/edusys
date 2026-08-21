@@ -1437,6 +1437,8 @@ function renderClassProgress() {
     const before = c.before_hours || 0;
     const monthlySum = months.reduce((s, m, i) => s + (c[mkeys[i]] || 0), 0);
     const cumulative = monthlySum;  // "累计已上" = 仅当年排课（不含年前已上）
+    const isGraduated = c.status === '已毕业';
+    
     // 进度 = 累计已上 / 阶段总课时（本年度完成进度）
     const pct = totalHours > 0 ? Math.round(cumulative / totalHours * 100) : 0;
     
@@ -1449,7 +1451,8 @@ function renderClassProgress() {
     // 已完成: 进度 ≥ 100%
     // 未设置: 阶段总课时 = 0
     let barColor = '#94a3b8', statusText = '';
-    if (totalHours === 0) { statusText = '未设置'; }
+    if (isGraduated) { barColor = '#9333ea'; statusText = '已毕业'; }
+    else if (totalHours === 0) { statusText = '未设置'; }
     else if (cumulative === 0) { barColor = '#94a3b8'; statusText = '未开课'; }
     else if (pct >= 100) { barColor = '#10b981'; statusText = '已完成'; }
     else if (pct >= 75) { barColor = '#8b5cf6'; statusText = '接近完成'; }
@@ -1457,9 +1460,10 @@ function renderClassProgress() {
     else if (pct >= 25) { barColor = '#f59e0b'; statusText = '进行中'; }
     else { barColor = '#f97316'; statusText = '刚起步'; }
     
-    html += '<tr draggable="true" data-cid="' + c.id + '">' +
+    const rowStyle = isGraduated ? ' style="opacity:0.5"' : '';
+    html += '<tr draggable="true" data-cid="' + c.id + '"' + rowStyle + '>' +
       '<td>' + (idx + 1) + '</td>' +
-      '<td style="text-align:left;font-weight:600"><span class="drag-hint">⋮⋮</span> ' + c.name + '</td>' +
+      '<td style="text-align:left;font-weight:600"><span class="drag-hint">⋮⋮</span> ' + c.name + (isGraduated ? ' <span style="display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;background:#f3e8ff;color:#9333ea;font-weight:600">已毕业</span>' : '') + '</td>' +
       '<td><input type="number" value="' + before + '" data-cid="' + c.id + '" data-field="before_hours" style="width:60px;text-align:center"></td>' +
       months.map((m, i) => '<td><input type="number" value="' + (c[mkeys[i]]||0) + '" data-cid="' + c.id + '" data-field="' + mkeys[i] + '" style="width:60px;text-align:center"></td>').join('') +
       '<td><b>' + cumulative + '</b></td>' +
