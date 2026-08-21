@@ -45,6 +45,9 @@ tbody td{padding:8px 8px;font-size:13px;text-align:center;border-bottom:1px soli
       .stats-group-body{transition:max-height .25s ease-out,opacity .2s ease-out;overflow:hidden}
       .stats-group-body.collapsed{max-height:0;opacity:0;margin-top:-4px}
       .stats-group-body.expanded{max-height:2000px;opacity:1}
+      .class-group-body{transition:max-height .25s ease-out,opacity .2s ease-out;overflow:hidden}
+      .class-group-body.collapsed{max-height:0;opacity:0;margin-top:-4px}
+      .class-group-body.expanded{max-height:3000px;opacity:1}
       .statsTbody tr:nth-child(even){background:#f8fafc}
       .statsTbody tr:nth-child(even):hover{background:#e2e8f0}
       .statsTbody tr:nth-child(odd):hover{background:#f8fafc}
@@ -611,6 +614,41 @@ function renderSummaryTipGrouped(title, groups) {
 // ═══════════════════════════════════════
 // Tab 1: 班级管理
 // ═══════════════════════════════════════
+
+// 班级管理分组折叠状态（默认全部展开）
+let _classGroupCollapsed = {};
+try {
+  const saved = sessionStorage.getItem('classGroupCollapsed');
+  if (saved) _classGroupCollapsed = JSON.parse(saved);
+} catch (e) {}
+
+function toggleClassGroup(key) {
+  _classGroupCollapsed[key] = !_classGroupCollapsed[key];
+  try { sessionStorage.setItem('classGroupCollapsed', JSON.stringify(_classGroupCollapsed)); } catch (e) {}
+
+  const body = document.querySelector('.class-group-body[data-group="' + key + '"]');
+  const btn = document.querySelector('.group-toggle[data-group="' + key + '"]');
+  if (body) {
+    body.classList.toggle('collapsed', _classGroupCollapsed[key]);
+    body.classList.toggle('expanded', !_classGroupCollapsed[key]);
+  }
+  if (btn) {
+    btn.classList.toggle('collapsed', _classGroupCollapsed[key]);
+    btn.textContent = _classGroupCollapsed[key] ? '展开' : '折叠';
+  }
+}
+
+function applyClassGroupCollapse() {
+  Object.keys(_classGroupCollapsed).forEach(key => {
+    if (_classGroupCollapsed[key]) {
+      const body = document.querySelector('.class-group-body[data-group="' + key + '"]');
+      const btn = document.querySelector('.group-toggle[data-group="' + key + '"]');
+      if (body) { body.classList.remove('expanded'); body.classList.add('collapsed'); }
+      if (btn) { btn.classList.add('collapsed'); btn.textContent = '展开'; }
+    }
+  });
+}
+
 function renderClasses() {
   // 识别短期班（暑假班等）：phase=暑假，或名称含 暑假/暑期/SH
   const shortTermPhaseIds = new Set(_classes.filter(isSummerClass).map(c => c.id));
@@ -721,8 +759,9 @@ function renderClasses() {
     groupDefs.forEach(g => {
       const list = groups[g.key];
       if (!list.length) return;
-      html += '<div class="class-group">';
-      html += '<div class="section-title"><span class="dot" style="background:' + g.color + '"></span>' + g.title + ' <span style="font-size:12px;color:#94a3b8;font-weight:500">（' + list.length + ' 个班）</span></div>';
+      html += '<div class="class-group" data-group="' + g.key + '">';
+      html += '<div class="section-title"><span class="dot" style="background:' + g.color + '"></span>' + g.title + ' <span style="font-size:12px;color:#94a3b8;font-weight:500">（' + list.length + ' 个班）</span><button class="btn btn-gray btn-sm group-toggle" data-group="' + g.key + '" onclick="toggleClassGroup(\'' + g.key + '\')">折叠</button></div>';
+      html += '<div class="class-group-body expanded" data-group="' + g.key + '">';
       html += '<div class="tbl"><table><thead><tr>' +
         '<th style="width:28px">⋮</th><th style="width:40px">序号</th><th style="text-align:left;width:140px">班级名称</th><th style="width:60px">阶段</th><th style="width:70px">带班老师</th>' +
         '<th style="width:80px">排课频率</th><th style="width:80px">阶段总课时</th>' +
@@ -730,13 +769,16 @@ function renderClasses() {
         '<th style="width:120px">操作</th>' +
         '</tr></thead><tbody class="classTbody" id="classTbody-' + g.key + '">';
       list.forEach((c, idx) => { html += rowHtml(c, idx); });
-      html += '</tbody></table></div></div>';
+      html += '</tbody></table></div></div></div>';
     });
   }
   document.getElementById('classGroupsContainer').innerHTML = html;
 
   // 绑定班级列表拖拽排序
   initClassDragSort();
+
+  // 应用保存的折叠状态（默认展开）
+  applyClassGroupCollapse();
 }
 
 // 班级毕业/恢复
