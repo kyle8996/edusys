@@ -202,7 +202,14 @@ tr.drag-over-bottom td{box-shadow:inset 0 -3px 0 0 #3b82f6}
 <div class="section" id="sec-students">
   <div class="card">
     <h2>学员列表
-      <select id="stuClassFilter" onchange="renderStudents()" style="margin-left:12px;padding:6px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px">
+      <select id="stuPhaseFilter" onchange="onStuPhaseChange()" style="margin-left:12px;padding:6px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;min-width:90px">
+        <option value="all">全部阶段</option>
+        <option value="k1">K1 阶段</option>
+        <option value="k2">K2 阶段</option>
+        <option value="s">S 阶段</option>
+        <option value="summer">短期班</option>
+      </select>
+      <select id="stuClassFilter" onchange="renderStudents()" style="margin-left:8px;padding:6px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;min-width:110px">
         <option value="all">全部班级</option>
       </select>
       <label class="status-toggle" style="margin-left:12px;font-size:13px;color:#7c3aed;font-weight:600">
@@ -531,6 +538,16 @@ function isSummerClass(c) {
   return getClassStageRank(c) === 8;
 }
 
+// 班级所属阶段分类（K1/K2/S/短期班/其他）—— 全局复用
+function classifyClass(c) {
+  if (isSummerClass(c)) return 'summer';
+  const ph = (c.phase || '').toUpperCase();
+  if (ph === 'K1') return 'k1';
+  if (ph === 'K2') return 'k2';
+  if (ph === 'S') return 's';
+  return 'other';
+}
+
 // 班级排序：按阶段(K1→K2→S1→S2→S3→S4→S5→S6→暑假班)，已毕业放最下，再按名称数字排序
 function sortClassesByPhase(a, b) {
   // 0. 已毕业班级排到最后
@@ -644,14 +661,6 @@ function renderClasses() {
   const visibleClasses = sortedClasses.filter(c => !(c.status === '已毕业' && !showGradClasses));
 
   // 按阶段分组：短期班 / K1 / K2 / S
-  function classifyClass(c) {
-    if (isSummerClass(c)) return 'summer';
-    const ph = (c.phase || '').toUpperCase();
-    if (ph === 'K1') return 'k1';
-    if (ph === 'K2') return 'k2';
-    if (ph === 'S') return 's';
-    return 'other';
-  }
   const groupDefs = [
     { key: 'k1',     title: 'K1 阶段',             color: '#2563eb', bg: '#dbeafe' },
     { key: 'k2',     title: 'K2 阶段',             color: '#059669', bg: '#d1fae5' },
@@ -958,15 +967,44 @@ async function deleteClass(cid) {
 // Tab 2: 学员出勤
 // ═══════════════════════════════════════
 function fillStuClassFilter() {
+  const phaseSel = document.getElementById('stuPhaseFilter');
   const sel = document.getElementById('stuClassFilter');
+  const phase = phaseSel ? phaseSel.value : 'all';
+  const currentClassVal = sel ? sel.value : 'all';
+
+  if (!sel) return;
   sel.innerHTML = '<option value="all">全部班级</option>';
-  getSortedClasses().forEach(c => {
+
+  let list = getSortedClasses();
+  if (phase !== 'all') {
+    list = list.filter(c => classifyClass(c) === phase);
+  }
+
+  let foundCurrent = false;
+  list.forEach(c => {
     const tag = c.status === '已毕业' ? '（已毕业）' : '';
-    sel.innerHTML += '<option value="' + c.id + '">' + c.name + tag + '</option>';
+    const opt = document.createElement('option');
+    opt.value = c.id;
+    opt.textContent = c.name + tag;
+    sel.appendChild(opt);
+    if (String(c.id) === currentClassVal) foundCurrent = true;
   });
+
+  // 若当前已选班级不在新阶段列表中，回退到全部班级
+  if (phase !== 'all' && !foundCurrent && currentClassVal !== 'all') {
+    sel.value = 'all';
+  } else if (currentClassVal) {
+    sel.value = currentClassVal;
+  }
+}
+
+function onStuPhaseChange() {
+  fillStuClassFilter();
+  renderStudents();
 }
 
 async function renderStudents() {
+  const phaseFilter = document.getElementById('stuPhaseFilter')?.value || 'all';
   const filterId = document.getElementById('stuClassFilter').value;
   const showGrad = document.getElementById('showGraduated').checked;
   const renewOnly = document.getElementById('showRenewOnly')?.checked;
@@ -988,6 +1026,12 @@ async function renderStudents() {
     if (showGrad) return isGradStu || isGradClass;
     return !isGradStu && !isGradClass;
   });
+  if (phaseFilter !== 'all') {
+    list = list.filter(s => {
+      const cls = _classes.find(c => c.id === s.class_id);
+      return cls && classifyClass(cls) === phaseFilter;
+    });
+  }
   if (isDetailMode) list = list.filter(s => s.class_id === parseInt(filterId));
   if (nameQuery) {
     const q = nameQuery.toLowerCase();
