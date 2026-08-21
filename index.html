@@ -1124,7 +1124,7 @@ async function renderStudents() {
     sortedClassIds.forEach((cid, ci) => {
       const col = STU_BG[ci % 2];
       const cname = classMap[parseInt(cid)] || '无班级';
-      html += '<tr class="cls-header" style="background:' + col.head + '"><td colspan="10" style="text-align:left;padding:10px 8px;border-left:4px solid ' + col.bar + '"><b>' + cname + '（当前班级人数：' + list.length + '人）</b></td></tr>';
+      html += '<tr class="cls-header" style="background:' + col.head + '"><td colspan="10" style="text-align:left;padding:10px 8px;border-left:4px solid ' + col.bar + '"><b>' + cname + '（当前班级人数：' + groups[cid].length + '人）</b></td></tr>';
       groups[cid].sort((a,b) => (a.sort_order||0) - (b.sort_order||0)).forEach(s => {
         seq++;
         const rem = calcRemaining(s.id);
