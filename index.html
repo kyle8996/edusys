@@ -34,7 +34,7 @@ tbody td{padding:8px 8px;font-size:13px;text-align:center;border-bottom:1px soli
       .tag-summer{background:#fef3c7;color:#92400e}
       /* 阶段分组彩色卡片 */
       .class-group, .stats-group{background:var(--g-bg,#fff);border:1px solid var(--g-border,#e2e8f0);border-radius:14px;box-shadow:0 2px 12px rgba(0,0,0,.06);margin-bottom:20px;overflow:hidden}
-      .class-group > .section-title, .stats-group > .section-title{margin:0;padding:12px 18px;background:var(--g-head,#2563eb);color:#fff;font-size:15px;justify-content:space-between}
+      .class-group > .section-title, .stats-group > .section-title{margin:0;padding:10px 16px;background:var(--g-head,#2563eb);color:#fff;font-size:15px;justify-content:flex-start}
       .class-group > .section-title .dot, .stats-group > .section-title .dot{background:#fff!important}
       .class-group > .section-title .group-toggle, .stats-group > .section-title .group-toggle{margin-left:0;border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.2);color:#fff;border-radius:6px;padding:3px 10px;font-size:11px;cursor:pointer;font-weight:600;transition:.15s;display:inline-flex;align-items:center;gap:4px}
       .class-group > .section-title .group-toggle:hover, .stats-group > .section-title .group-toggle:hover{background:rgba(255,255,255,.35)}
@@ -705,9 +705,9 @@ function renderClasses() {
 
   // 按阶段分组：短期班 / K1 / K2 / S
   const groupDefs = [
-    { key: 'k1',     title: 'K1 阶段',             color: '#2563eb', bg: '#eff6ff', head: '#2563eb', stripe: '#dbeafe', border: '#bfdbfe' },
-    { key: 'k2',     title: 'K2 阶段',             color: '#059669', bg: '#f0fdf4', head: '#059669', stripe: '#d1fae5', border: '#a7f3d0' },
-    { key: 's',      title: 'S 阶段',              color: '#7c3aed', bg: '#faf5ff', head: '#7c3aed', stripe: '#ede9fe', border: '#ddd6fe' },
+    { key: 'k1',     title: 'K1 阶段',             color: '#2563eb', bg: '#f0f9ff', head: '#3b82f6', stripe: '#dbeafe', border: '#bfdbfe' },
+    { key: 'k2',     title: 'K2 阶段',             color: '#059669', bg: '#f0fdf4', head: '#10b981', stripe: '#d1fae5', border: '#a7f3d0' },
+    { key: 's',      title: 'S 阶段',              color: '#7c3aed', bg: '#faf5ff', head: '#8b5cf6', stripe: '#ede9fe', border: '#ddd6fe' },
     { key: 'summer', title: '短期班（暑假/寒假）',  color: '#d97706', bg: '#fffbeb', head: '#d97706', stripe: '#fef3c7', border: '#fde68a' },
     { key: 'other',  title: '其他',                color: '#64748b', bg: '#f8fafc', head: '#64748b', stripe: '#f1f5f9', border: '#e2e8f0' }
   ];
@@ -1594,9 +1594,9 @@ function renderClassProgress() {
 
   // 按阶段分组：K1 / K2 / S / 短期班 / 其他
   const groupDefs = [
-    { key: 'k1',     title: 'K1 阶段',             color: '#2563eb', bg: '#eff6ff', head: '#2563eb', stripe: '#dbeafe', border: '#bfdbfe' },
-    { key: 'k2',     title: 'K2 阶段',             color: '#059669', bg: '#f0fdf4', head: '#059669', stripe: '#d1fae5', border: '#a7f3d0' },
-    { key: 's',      title: 'S 阶段',              color: '#7c3aed', bg: '#faf5ff', head: '#7c3aed', stripe: '#ede9fe', border: '#ddd6fe' },
+    { key: 'k1',     title: 'K1 阶段',             color: '#2563eb', bg: '#f0f9ff', head: '#3b82f6', stripe: '#dbeafe', border: '#bfdbfe' },
+    { key: 'k2',     title: 'K2 阶段',             color: '#059669', bg: '#f0fdf4', head: '#10b981', stripe: '#d1fae5', border: '#a7f3d0' },
+    { key: 's',      title: 'S 阶段',              color: '#7c3aed', bg: '#faf5ff', head: '#8b5cf6', stripe: '#ede9fe', border: '#ddd6fe' },
     { key: 'summer', title: '短期班（暑假/寒假）', color: '#d97706', bg: '#fffbeb', head: '#d97706', stripe: '#fef3c7', border: '#fde68a' },
     { key: 'other',  title: '其他',                color: '#64748b', bg: '#f8fafc', head: '#64748b', stripe: '#f1f5f9', border: '#e2e8f0' }
   ];
