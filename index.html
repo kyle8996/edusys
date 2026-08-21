@@ -1112,10 +1112,16 @@ async function renderStudents() {
       '<th style="width:70px">出勤课时合计</th><th style="width:80px">缴费课时</th><th style="width:70px;color:#dc2626">请假/缺课</th><th style="width:80px;background:#2563eb;color:#fff;font-weight:700;border-radius:4px">剩余课时</th>' +
       '<th style="width:130px">操作</th></tr>';
 
+    // 相邻班级用浅绿/浅紫两种浅色交替，便于区分班级边界
+    const STU_BG = [
+      { block:'#dcf0e3', head:'#c6e7d2', bar:'#9fd1b2' },
+      { block:'#efe4f6', head:'#e0cdf0', bar:'#c9aee0' }
+    ];
     let seq = 0;
-    sortedClassIds.forEach(cid => {
+    sortedClassIds.forEach((cid, ci) => {
+      const col = STU_BG[ci % 2];
       const cname = classMap[parseInt(cid)] || '无班级';
-      html += '<tr class="cls-header"><td colspan="10" style="text-align:left;padding:10px 8px"><b>' + cname + '</b></td></tr>';
+      html += '<tr class="cls-header" style="background:' + col.head + '"><td colspan="10" style="text-align:left;padding:10px 8px;border-left:4px solid ' + col.bar + '"><b>' + cname + '</b></td></tr>';
       groups[cid].sort((a,b) => (a.sort_order||0) - (b.sort_order||0)).forEach(s => {
         seq++;
         const rem = calcRemaining(s.id);
@@ -1127,7 +1133,7 @@ async function renderStudents() {
         const isSummer = clsObj && isSummerClass(clsObj);
         const isWarn = !isGrad && !isSummer && rem <= 10;
         const rowClass = isGrad ? 'row-grad' : (isWarn ? 'row-warn' : '');
-        html += '<tr class="' + rowClass + '" draggable="true" ' +
+        html += '<tr class="' + rowClass + '" style="background:' + col.block + '" draggable="true" ' +
           'ondragstart="dragStart(event,' + s.id + ')" ' +
           'ondragover="dragOver(event,' + s.id + ',this)" ' +
           'ondragleave="dragLeave(event,this)" ' +
