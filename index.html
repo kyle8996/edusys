@@ -68,6 +68,9 @@ tbody td{padding:8px 8px;font-size:13px;text-align:center;border-bottom:1px soli
 .att-table-wrap .att-total{font-weight:700;color:#2563eb;background:#f0f7ff}
 .att-month-hd{background:#f1f5f9;font-size:11px;color:#64748b}
 .att-table-wrap td input.changed{background:#fef3c7;border-color:#f59e0b}
+/* 学员出勤：卡片撑满视口，避免底部大量留白 */
+#sec-students .card{display:flex;flex-direction:column;min-height:calc(100vh - 180px)}
+#sec-students .att-table-wrap{flex:1;max-height:none}
 .stu-att-input{width:36px;padding:2px 1px;border:1px solid #cbd5e1;border-radius:4px;text-align:center;font-size:11px}
 .stu-att-input:focus{outline:none;border-color:#2563eb;background:#f0f7ff}
 .stu-att-input.changed{background:#fef3c7;border-color:#f59e0b}
@@ -1121,7 +1124,7 @@ async function renderStudents() {
     sortedClassIds.forEach((cid, ci) => {
       const col = STU_BG[ci % 2];
       const cname = classMap[parseInt(cid)] || '无班级';
-      html += '<tr class="cls-header" style="background:' + col.head + '"><td colspan="10" style="text-align:left;padding:10px 8px;border-left:4px solid ' + col.bar + '"><b>' + cname + '</b></td></tr>';
+      html += '<tr class="cls-header" style="background:' + col.head + '"><td colspan="10" style="text-align:left;padding:10px 8px;border-left:4px solid ' + col.bar + '"><b>' + cname + '（当前班级人数：' + list.length + '人）</b></td></tr>';
       groups[cid].sort((a,b) => (a.sort_order||0) - (b.sort_order||0)).forEach(s => {
         seq++;
         const rem = calcRemaining(s.id);
@@ -1197,7 +1200,7 @@ async function renderStudents() {
     document.getElementById('stuThead').innerHTML = theadHtml;
     
     // 表体
-    let html = '<tr class="cls-header"><td colspan="' + totalCols + '" style="text-align:left;padding:10px 8px"><b>' + cname + '</b> · ' + list.length + ' 名学员 · 排课 ' + freq + ' 节/月</td></tr>';
+    let html = '<tr class="cls-header"><td colspan="' + totalCols + '" style="text-align:left;padding:10px 8px"><b>' + cname + '（当前班级人数：' + list.length + '人）</b> · 排课 ' + freq + ' 节/月</td></tr>';
     
     list.sort((a,b) => (a.sort_order||0) - (b.sort_order||0)).forEach((s, idx) => {
       const rem = calcRemaining(s.id);
