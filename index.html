@@ -36,8 +36,15 @@ tbody td{padding:8px 8px;font-size:13px;text-align:center;border-bottom:1px soli
       .classTbody tr:nth-child(odd):hover{background:#f8fafc}
       .tag-summer{background:#fef3c7;color:#92400e}
       .class-group{margin-bottom:6px}
-      .section-title{display:flex;align-items:center;gap:10px;margin:18px 0 10px;font-size:16px;font-weight:700}
+      .section-title{display:flex;align-items:center;gap:10px;margin:18px 0 10px;font-size:16px;font-weight:700;justify-content:space-between}
       .section-title .dot{width:10px;height:10px;border-radius:50%}
+      .section-title .group-toggle{margin-left:auto;padding:3px 10px;border-radius:6px;border:1px solid #cbd5e1;background:#fff;color:#475569;font-size:11px;cursor:pointer;font-weight:600;transition:.15s;display:inline-flex;align-items:center;gap:4px}
+      .section-title .group-toggle:hover{background:#f1f5f9;border-color:#94a3b8}
+      .section-title .group-toggle::before{content:'▾';font-size:12px}
+      .section-title .group-toggle.collapsed::before{content:'▸'}
+      .stats-group-body{transition:max-height .25s ease-out,opacity .2s ease-out;overflow:hidden}
+      .stats-group-body.collapsed{max-height:0;opacity:0;margin-top:-4px}
+      .stats-group-body.expanded{max-height:2000px;opacity:1}
       .statsTbody tr:nth-child(even){background:#f8fafc}
       .statsTbody tr:nth-child(even):hover{background:#e2e8f0}
       .statsTbody tr:nth-child(odd):hover{background:#f8fafc}
@@ -1486,6 +1493,40 @@ async function saveStuAttendance() {
 // ═══════════════════════════════════════
 // Tab 4: 班级排课
 // ═══════════════════════════════════════
+// 班级排课进度分组折叠状态（默认全部展开）
+let _statsGroupCollapsed = {};
+try {
+  const saved = sessionStorage.getItem('statsGroupCollapsed');
+  if (saved) _statsGroupCollapsed = JSON.parse(saved);
+} catch (e) {}
+
+function toggleStatsGroup(key) {
+  _statsGroupCollapsed[key] = !_statsGroupCollapsed[key];
+  try { sessionStorage.setItem('statsGroupCollapsed', JSON.stringify(_statsGroupCollapsed)); } catch (e) {}
+
+  const body = document.querySelector('.stats-group-body[data-group="' + key + '"]');
+  const btn = document.querySelector('.group-toggle[data-group="' + key + '"]');
+  if (body) {
+    body.classList.toggle('collapsed', _statsGroupCollapsed[key]);
+    body.classList.toggle('expanded', !_statsGroupCollapsed[key]);
+  }
+  if (btn) {
+    btn.classList.toggle('collapsed', _statsGroupCollapsed[key]);
+    btn.textContent = _statsGroupCollapsed[key] ? '展开' : '折叠';
+  }
+}
+
+function applyStatsGroupCollapse() {
+  Object.keys(_statsGroupCollapsed).forEach(key => {
+    if (_statsGroupCollapsed[key]) {
+      const body = document.querySelector('.stats-group-body[data-group="' + key + '"]');
+      const btn = document.querySelector('.group-toggle[data-group="' + key + '"]');
+      if (body) { body.classList.remove('expanded'); body.classList.add('collapsed'); }
+      if (btn) { btn.classList.add('collapsed'); btn.textContent = '展开'; }
+    }
+  });
+}
+
 function renderClassProgress() {
   // 动态月份范围：3月开始，到当前月份（当前7月则显示 3-7月）
   const startMonth = 3;
@@ -1525,10 +1566,15 @@ function renderClassProgress() {
     const list = groups[g.key];
     if (!list.length) return;
 
-    html += '<div class="section-title">' +
+    html += '<div class="stats-group" data-group="' + g.key + '">' +
+      '<div class="section-title">' +
+      '<span style="display:flex;align-items:center;gap:10px">' +
       '<span class="dot" style="background:' + g.color + '"></span>' +
       g.title + ' <span style="font-size:12px;color:#94a3b8;font-weight:500">（' + list.length + ' 个班）</span>' +
+      '</span>' +
+      '<button class="btn btn-gray btn-sm group-toggle" data-group="' + g.key + '" onclick="toggleStatsGroup(\'' + g.key + '\')">折叠</button>' +
       '</div>' +
+      '<div class="stats-group-body expanded" data-group="' + g.key + '">' +
       '<div class="tbl"><table>' +
       '<thead><tr>' + theadCells + '</tr></thead>' +
       '<tbody class="statsTbody" data-group="' + g.key + '">';
@@ -1569,13 +1615,16 @@ function renderClassProgress() {
         '</tr>';
     });
 
-    html += '</tbody></table></div>';
+    html += '</tbody></table></div></div></div>';
   });
 
   document.getElementById('statsGroupsContainer').innerHTML = html || '<div style="color:#94a3b8;padding:30px;text-align:center">暂无班级</div>';
 
   // 绑定拖拽排序事件
   initDragSort();
+
+  // 应用保存的折叠状态（默认展开）
+  applyStatsGroupCollapse();
 }
 
 let _dragSrcCid = null;
