@@ -38,9 +38,9 @@ tbody td{padding:8px 8px;font-size:13px;text-align:center;border-bottom:1px soli
       .class-group{margin-bottom:6px}
       .section-title{display:flex;align-items:center;gap:10px;margin:18px 0 10px;font-size:16px;font-weight:700}
       .section-title .dot{width:10px;height:10px;border-radius:50%}
-      #statsTbody tr:nth-child(even){background:#f8fafc}
-      #statsTbody tr:nth-child(even):hover{background:#e2e8f0}
-      #statsTbody tr:nth-child(odd):hover{background:#f8fafc}
+      .statsTbody tr:nth-child(even){background:#f8fafc}
+      .statsTbody tr:nth-child(even):hover{background:#e2e8f0}
+      .statsTbody tr:nth-child(odd):hover{background:#f8fafc}
 .tag{font-size:10px;padding:2px 8px;border-radius:12px;font-weight:600}
 .tag-k1{background:#dbeafe;color:#1e40af}.tag-k2{background:#d1fae5;color:#065f46}.tag-s{background:#ede9fe;color:#5b21b6}
 .modal-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.4);z-index:200;justify-content:center;align-items:center}
@@ -247,10 +247,7 @@ tr.drag-over-bottom td{box-shadow:inset 0 -3px 0 0 #3b82f6}
         <input type="checkbox" id="showGraduatedProgress" onchange="renderClassProgress()"> 显示毕业班级
       </label>
       <button class="btn btn-gray btn-sm" onclick="exportTab('stats')" style="margin-left:auto">📥 导出</button></h2>
-    <div class="tbl"><table><thead><tr id="statsThead">
-      <th style="text-align:left">班级</th><th>年前已上</th><th>3月排课</th><th>4月排课</th><th>5月排课</th><th>6月排课</th>
-      <th>累计已上</th><th>阶段总课时</th><th>进度</th><th>状态</th>
-    </tr></thead><tbody id="statsTbody"></tbody></table></div>
+    <div id="statsGroupsContainer"></div>
   </div>
 </div>
 
@@ -1500,66 +1497,83 @@ function renderClassProgress() {
     months.push(m);
     mkeys.push('m' + m);
   }
-  
-  // 动态渲染表头
-  const thead = document.getElementById('statsThead');
-  if (thead) {
-    thead.innerHTML = '<th style="width:40px">序号</th><th style="text-align:left">班级</th><th>年前已上</th>' +
-      months.map(m => '<th>' + m + '月排课</th>').join('') +
-      '<th>累计已上</th><th>阶段总课时</th><th>进度</th><th>状态</th>';
-  }
-  
-  let html = '';
+
+  const theadCells =
+    '<th style="width:40px">序号</th><th style="text-align:left">班级</th><th>年前已上</th>' +
+    months.map(m => '<th>' + m + '月排课</th>').join('') +
+    '<th>累计已上</th><th>阶段总课时</th><th>进度</th><th>状态</th>';
+
   const showGrad = document.getElementById('showGraduatedProgress')?.checked || false;
   // 按 sort_order 排序
   const sortedClasses = [..._classes].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
   const visibleClasses = sortedClasses.filter(c => !(c.status === '已毕业' && !showGrad));
-  visibleClasses.forEach((c, idx) => {
-    // 默认不显示毕业班级，除非勾选显示
-    if (c.status === '已毕业' && !showGrad) return;
-    const totalHours = c.total_hours || 0;
-    const before = c.before_hours || 0;
-    const monthlySum = months.reduce((s, m, i) => s + (c[mkeys[i]] || 0), 0);
-    const cumulative = monthlySum;  // "累计已上" = 仅当年排课（不含年前已上）
-    const isGraduated = c.status === '已毕业';
-    
-    // 进度 = 累计已上 / 阶段总课时（本年度完成进度）
-    const pct = totalHours > 0 ? Math.round(cumulative / totalHours * 100) : 0;
-    
-    // 状态分级
-    // 未开课: 阶段总课时>0 且 累计已上=0 （当年从未排课/未开班）
-    // 刚起步: 0% < 进度 < 25%
-    // 进行中: 25% ≤ 进度 < 50%
-    // 过半:   50% ≤ 进度 < 75%
-    // 接近完成: 75% ≤ 进度 < 100%
-    // 已完成: 进度 ≥ 100%
-    // 未设置: 阶段总课时 = 0
-    let barColor = '#94a3b8', statusText = '';
-    if (isGraduated) { barColor = '#9333ea'; statusText = '已毕业'; }
-    else if (totalHours === 0) { statusText = '未设置'; }
-    else if (cumulative === 0) { barColor = '#94a3b8'; statusText = '未开课'; }
-    else if (pct >= 100) { barColor = '#10b981'; statusText = '已完成'; }
-    else if (pct >= 75) { barColor = '#8b5cf6'; statusText = '接近完成'; }
-    else if (pct >= 50) { barColor = '#3b82f6'; statusText = '过半'; }
-    else if (pct >= 25) { barColor = '#f59e0b'; statusText = '进行中'; }
-    else { barColor = '#f97316'; statusText = '刚起步'; }
-    
-    const rowStyle = isGraduated ? ' style="opacity:0.5"' : '';
-    html += '<tr draggable="true" data-cid="' + c.id + '"' + rowStyle + '>' +
-      '<td>' + (idx + 1) + '</td>' +
-      '<td style="text-align:left;font-weight:600"><span class="drag-hint">⋮⋮</span> ' + c.name + (isGraduated ? ' <span style="display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;background:#f3e8ff;color:#9333ea;font-weight:600">已毕业</span>' : '') + '</td>' +
-      '<td><input type="number" value="' + before + '" data-cid="' + c.id + '" data-field="before_hours" style="width:60px;text-align:center"></td>' +
-      months.map((m, i) => '<td><input type="number" value="' + (c[mkeys[i]]||0) + '" data-cid="' + c.id + '" data-field="' + mkeys[i] + '" style="width:60px;text-align:center"></td>').join('') +
-      '<td><b>' + cumulative + '</b></td>' +
-      '<td><b>' + totalHours + '</b></td>' +
-      '<td><div style="display:flex;align-items:center;gap:6px;justify-content:center">' +
-        '<div class="pbar"><div class="pfill" style="width:' + Math.min(100,pct) + '%;background:' + barColor + '"></div></div>' +
-        '<span style="font-size:11px">' + pct + '%</span></div></td>' +
-      '<td><span style="color:' + barColor + ';font-weight:600;font-size:12px">' + statusText + '</span></td>' +
-      '</tr>';
+
+  // 按阶段分组：K1 / K2 / S / 短期班 / 其他
+  const groupDefs = [
+    { key: 'k1',     title: 'K1 阶段',             color: '#2563eb', bg: '#dbeafe' },
+    { key: 'k2',     title: 'K2 阶段',             color: '#059669', bg: '#d1fae5' },
+    { key: 's',      title: 'S 阶段',              color: '#7c3aed', bg: '#ede9fe' },
+    { key: 'summer', title: '短期班（暑假/寒假）', color: '#d97706', bg: '#fef3c7' },
+    { key: 'other',  title: '其他',                color: '#64748b', bg: '#f1f5f9' }
+  ];
+  const groups = {};
+  groupDefs.forEach(g => groups[g.key] = []);
+  visibleClasses.forEach(c => { groups[classifyClass(c)].push(c); });
+
+  let html = '';
+  groupDefs.forEach(g => {
+    const list = groups[g.key];
+    if (!list.length) return;
+
+    html += '<div class="section-title">' +
+      '<span class="dot" style="background:' + g.color + '"></span>' +
+      g.title + ' <span style="font-size:12px;color:#94a3b8;font-weight:500">（' + list.length + ' 个班）</span>' +
+      '</div>' +
+      '<div class="tbl"><table>' +
+      '<thead><tr>' + theadCells + '</tr></thead>' +
+      '<tbody class="statsTbody" data-group="' + g.key + '">';
+
+    list.forEach((c, idx) => {
+      const totalHours = c.total_hours || 0;
+      const before = c.before_hours || 0;
+      const monthlySum = months.reduce((s, m, i) => s + (c[mkeys[i]] || 0), 0);
+      const cumulative = monthlySum;  // "累计已上" = 仅当年排课（不含年前已上）
+      const isGraduated = c.status === '已毕业';
+
+      // 进度 = 累计已上 / 阶段总课时（本年度完成进度）
+      const pct = totalHours > 0 ? Math.round(cumulative / totalHours * 100) : 0;
+
+      // 状态分级
+      let barColor = '#94a3b8', statusText = '';
+      if (isGraduated) { barColor = '#9333ea'; statusText = '已毕业'; }
+      else if (totalHours === 0) { statusText = '未设置'; }
+      else if (cumulative === 0) { barColor = '#94a3b8'; statusText = '未开课'; }
+      else if (pct >= 100) { barColor = '#10b981'; statusText = '已完成'; }
+      else if (pct >= 75) { barColor = '#8b5cf6'; statusText = '接近完成'; }
+      else if (pct >= 50) { barColor = '#3b82f6'; statusText = '过半'; }
+      else if (pct >= 25) { barColor = '#f59e0b'; statusText = '进行中'; }
+      else { barColor = '#f97316'; statusText = '刚起步'; }
+
+      const rowStyle = isGraduated ? ' style="opacity:0.5"' : '';
+      html += '<tr draggable="true" data-cid="' + c.id + '" data-group="' + g.key + '"' + rowStyle + '>' +
+        '<td>' + (idx + 1) + '</td>' +
+        '<td style="text-align:left;font-weight:600"><span class="drag-hint">⋮⋮</span> ' + c.name + (isGraduated ? ' <span style="display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;background:#f3e8ff;color:#9333ea;font-weight:600">已毕业</span>' : '') + '</td>' +
+        '<td><input type="number" value="' + before + '" data-cid="' + c.id + '" data-field="before_hours" style="width:60px;text-align:center"></td>' +
+        months.map((m, i) => '<td><input type="number" value="' + (c[mkeys[i]]||0) + '" data-cid="' + c.id + '" data-field="' + mkeys[i] + '" style="width:60px;text-align:center"></td>').join('') +
+        '<td><b>' + cumulative + '</b></td>' +
+        '<td><b>' + totalHours + '</b></td>' +
+        '<td><div style="display:flex;align-items:center;gap:6px;justify-content:center">' +
+          '<div class="pbar"><div class="pfill" style="width:' + Math.min(100,pct) + '%;background:' + barColor + '"></div></div>' +
+          '<span style="font-size:11px">' + pct + '%</span></div></td>' +
+        '<td><span style="color:' + barColor + ';font-weight:600;font-size:12px">' + statusText + '</span></td>' +
+        '</tr>';
+    });
+
+    html += '</tbody></table></div>';
   });
-  document.getElementById('statsTbody').innerHTML = html;
-  
+
+  document.getElementById('statsGroupsContainer').innerHTML = html || '<div style="color:#94a3b8;padding:30px;text-align:center">暂无班级</div>';
+
   // 绑定拖拽排序事件
   initDragSort();
 }
@@ -1567,84 +1581,89 @@ function renderClassProgress() {
 let _dragSrcCid = null;
 
 function initDragSort() {
-  const tbody = document.getElementById('statsTbody');
-  const rows = tbody.querySelectorAll('tr');
-  
-  rows.forEach(row => {
-    row.addEventListener('dragstart', function(e) {
-      _dragSrcCid = parseInt(this.dataset.cid);
-      e.dataTransfer.effectAllowed = 'move';
-      this.classList.add('dragging');
-    });
-    
-    row.addEventListener('dragend', function(e) {
-      this.classList.remove('dragging');
-      rows.forEach(r => {
-        r.classList.remove('drag-over-top');
-        r.classList.remove('drag-over-bottom');
+  document.querySelectorAll('.statsTbody').forEach(tbody => {
+    const rows = tbody.querySelectorAll('tr');
+
+    rows.forEach(row => {
+      row.addEventListener('dragstart', function(e) {
+        _dragSrcCid = parseInt(this.dataset.cid);
+        _dragSrcGroup = this.dataset.group;
+        e.dataTransfer.effectAllowed = 'move';
+        this.classList.add('dragging');
       });
-      _dragSrcCid = null;
-    });
-    
-    row.addEventListener('dragover', function(e) {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'move';
-      return false;
-    });
-    
-    row.addEventListener('dragenter', function(e) {
-      if (_dragSrcCid === null || _dragSrcCid === parseInt(this.dataset.cid)) return;
-      const rect = this.getBoundingClientRect();
-      const midY = rect.top + rect.height / 2;
-      if (e.clientY < midY) {
-        this.classList.add('drag-over-top');
-        this.classList.remove('drag-over-bottom');
-      } else {
-        this.classList.add('drag-over-bottom');
+
+      row.addEventListener('dragend', function(e) {
+        this.classList.remove('dragging');
+        document.querySelectorAll('.statsTbody tr').forEach(r => {
+          r.classList.remove('drag-over-top');
+          r.classList.remove('drag-over-bottom');
+        });
+        _dragSrcCid = null;
+        _dragSrcGroup = null;
+      });
+
+      row.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        return false;
+      });
+
+      row.addEventListener('dragenter', function(e) {
+        if (_dragSrcCid === null || _dragSrcCid === parseInt(this.dataset.cid)) return;
+        if (_dragSrcGroup !== this.dataset.group) return; // 限制同阶段组内拖拽
+        const rect = this.getBoundingClientRect();
+        const midY = rect.top + rect.height / 2;
+        if (e.clientY < midY) {
+          this.classList.add('drag-over-top');
+          this.classList.remove('drag-over-bottom');
+        } else {
+          this.classList.add('drag-over-bottom');
+          this.classList.remove('drag-over-top');
+        }
+      });
+
+      row.addEventListener('dragleave', function(e) {
         this.classList.remove('drag-over-top');
-      }
-    });
-    
-    row.addEventListener('dragleave', function(e) {
-      this.classList.remove('drag-over-top');
-      this.classList.remove('drag-over-bottom');
-    });
-    
-    row.addEventListener('drop', function(e) {
-      e.stopPropagation();
-      e.preventDefault();
-      
-      const dstCid = parseInt(this.dataset.cid);
-      if (_dragSrcCid === null || _dragSrcCid === dstCid) return false;
-      
-      const srcIdx = _classes.findIndex(c => c.id === _dragSrcCid);
-      const dstIdx = _classes.findIndex(c => c.id === dstCid);
-      if (srcIdx === -1 || dstIdx === -1) return false;
-      
-      // 判断在目标行的上方还是下方
-      const rect = this.getBoundingClientRect();
-      const insertBefore = e.clientY < rect.top + rect.height / 2;
-      
-      // 从原位置移除
-      const [moved] = _classes.splice(srcIdx, 1);
-      
-      // 计算插入位置
-      let insertIdx = dstIdx;
-      if (srcIdx < dstIdx && insertBefore) {
-        insertIdx = dstIdx - 1;
-      } else if (srcIdx > dstIdx && !insertBefore) {
-        insertIdx = dstIdx + 1;
-      }
-      
-      _classes.splice(insertIdx, 0, moved);
-      
-      // 重新分配 sort_order（10, 20, 30...）
-      _classes.forEach((c, i) => {
-        c.sort_order = (i + 1) * 10;
+        this.classList.remove('drag-over-bottom');
       });
-      
-      renderClassProgress();
-      return false;
+
+      row.addEventListener('drop', function(e) {
+        e.stopPropagation();
+        e.preventDefault();
+
+        const dstCid = parseInt(this.dataset.cid);
+        if (_dragSrcCid === null || _dragSrcCid === dstCid) return false;
+        if (_dragSrcGroup !== this.dataset.group) return false; // 限制同阶段组内拖拽
+
+        const srcIdx = _classes.findIndex(c => c.id === _dragSrcCid);
+        const dstIdx = _classes.findIndex(c => c.id === dstCid);
+        if (srcIdx === -1 || dstIdx === -1) return false;
+
+        // 判断在目标行的上方还是下方
+        const rect = this.getBoundingClientRect();
+        const insertBefore = e.clientY < rect.top + rect.height / 2;
+
+        // 从原位置移除
+        const [moved] = _classes.splice(srcIdx, 1);
+
+        // 计算插入位置
+        let insertIdx = dstIdx;
+        if (srcIdx < dstIdx && insertBefore) {
+          insertIdx = dstIdx - 1;
+        } else if (srcIdx > dstIdx && !insertBefore) {
+          insertIdx = dstIdx + 1;
+        }
+
+        _classes.splice(insertIdx, 0, moved);
+
+        // 重新分配 sort_order（10, 20, 30...）
+        _classes.forEach((c, i) => {
+          c.sort_order = (i + 1) * 10;
+        });
+
+        renderClassProgress();
+        return false;
+      });
     });
   });
 }
@@ -1747,7 +1766,7 @@ async function saveClassListSort() {
 }
 
 async function saveClassProgress() {
-  const inputs = document.querySelectorAll('#statsTbody input');
+  const inputs = document.querySelectorAll('.statsTbody input');
   let count = 0;
   for (const inp of inputs) {
     const cid = parseInt(inp.dataset.cid);
