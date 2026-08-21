@@ -1060,15 +1060,17 @@ async function renderStudents() {
       .map(c => c.id);
     
     document.getElementById('stuThead').innerHTML = '<tr>' +
-      '<th style="width:50px">拖拽</th><th style="text-align:left;width:90px">姓名</th><th style="width:100px">班级</th>' +
+      '<th style="width:40px">序号</th><th style="width:50px">拖拽</th><th style="text-align:left;width:90px">姓名</th><th style="width:100px">班级</th>' +
       '<th style="width:100px">家长手机</th>' +
       '<th style="width:70px">出勤课时合计</th><th style="width:80px">缴费课时</th><th style="width:70px;color:#dc2626">请假/缺课</th><th style="width:80px;background:#2563eb;color:#fff;font-weight:700;border-radius:4px">剩余课时</th>' +
       '<th style="width:130px">操作</th></tr>';
-    
+
+    let seq = 0;
     sortedClassIds.forEach(cid => {
       const cname = classMap[parseInt(cid)] || '无班级';
-      html += '<tr class="cls-header"><td colspan="9" style="text-align:left;padding:10px 8px"><b>' + cname + '</b></td></tr>';
+      html += '<tr class="cls-header"><td colspan="10" style="text-align:left;padding:10px 8px"><b>' + cname + '</b></td></tr>';
       groups[cid].sort((a,b) => (a.sort_order||0) - (b.sort_order||0)).forEach(s => {
+        seq++;
         const rem = calcRemaining(s.id);
         const consumed = (s.paid_hours||0) - rem;
         const leaveTotal = _leaves.filter(l => l.student_id === s.id && l.year === year)
@@ -1084,6 +1086,7 @@ async function renderStudents() {
           'ondragleave="dragLeave(event,this)" ' +
           'ondrop="dropStudent(event,' + s.id + ')" ' +
           'data-sid="' + s.id + '">' +
+          '<td style="font-weight:600;color:#475569">' + seq + '</td>' +
           '<td><span class="drag-hint">⋮⋮</span></td>' +
           '<td style="text-align:left;font-weight:600">' + s.name +
             (isGrad ? '<span class="grad-tag">毕业</span>' : '') +
@@ -1105,7 +1108,7 @@ async function renderStudents() {
           '</td></tr>';
       });
     });
-    document.getElementById('stuTbody').innerHTML = html || '<tr><td colspan="9" style="color:#94a3b8;padding:30px">暂无学员</td></tr>';
+    document.getElementById('stuTbody').innerHTML = html || '<tr><td colspan="10" style="color:#94a3b8;padding:30px">暂无学员</td></tr>';
   } else {
     // ═══════════ 具体班级：展开月度课时视图 ═══════════
     const cid = parseInt(filterId);
@@ -1119,10 +1122,11 @@ async function renderStudents() {
     const visibleMonths = [];
     for (let m = startMonth; m <= endMonth; m++) visibleMonths.push(m);
     const monthCount = visibleMonths.length;
-    const totalCols = 2 + monthCount + 5; // 拖拽+姓名 + 月份 + 出勤课时合计+请假合计+缴费课时+剩余课时+操作
-    
-    // 表头：拖拽 | 姓名 | 3~当前月(上课/请假) | 出勤课时合计 | 请假合计 | 缴费课时 | 剩余课时 | 操作
+    const totalCols = 3 + monthCount + 5; // 序号+拖拽+姓名 + 月份 + 出勤课时合计+请假合计+缴费课时+剩余课时+操作
+
+    // 表头：序号 | 拖拽 | 姓名 | 3~当前月(上课/请假) | 出勤课时合计 | 请假合计 | 缴费课时 | 剩余课时 | 操作
     let theadHtml = '<tr>' +
+      '<th style="width:40px">序号</th>' +
       '<th style="width:28px">⋮</th>' +
       '<th style="text-align:left;width:70px">姓名</th>';
     visibleMonths.forEach(m => {
@@ -1142,19 +1146,20 @@ async function renderStudents() {
     // 表体
     let html = '<tr class="cls-header"><td colspan="' + totalCols + '" style="text-align:left;padding:10px 8px"><b>' + cname + '</b> · ' + list.length + ' 名学员 · 排课 ' + freq + ' 节/月</td></tr>';
     
-    list.sort((a,b) => (a.sort_order||0) - (b.sort_order||0)).forEach(s => {
+    list.sort((a,b) => (a.sort_order||0) - (b.sort_order||0)).forEach((s, idx) => {
       const rem = calcRemaining(s.id);
       const isGrad = s.status === '毕业';
       const isSummer = cls && isSummerClass(cls);
       const isWarn = !isGrad && !isSummer && rem <= 10;
       const rowClass = isGrad ? 'row-grad' : (isWarn ? 'row-warn' : '');
-      
+
       html += '<tr class="' + rowClass + '" data-sid="' + s.id + '" draggable="true" ' +
         'ondragstart="dragStart(event,' + s.id + ')" ' +
         'ondragover="dragOver(event,' + s.id + ',this)" ' +
         'ondragleave="dragLeave(event,this)" ' +
         'ondrop="dropStudent(event,' + s.id + ')" ' +
         'data-sid="' + s.id + '">' +
+        '<td style="font-weight:600;color:#475569">' + (idx + 1) + '</td>' +
         '<td><span class="drag-hint">⋮⋮</span></td>' +
         '<td style="text-align:left;font-weight:600">' + s.name +
           (isGrad ? '<span class="grad-tag">毕业</span>' : '') +
