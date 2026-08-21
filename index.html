@@ -646,7 +646,8 @@ function renderClasses() {
   const showGradClasses = document.getElementById('showGraduatedClasses').checked;
   // 按 sort_order 排序（拖拽自定义顺序）
   const sortedClasses = [..._classes].sort((a,b) => (a.sort_order||0) - (b.sort_order||0));
-  sortedClasses.forEach((c, idx) => {
+  const visibleClasses = sortedClasses.filter(c => !(c.status === '已毕业' && !showGradClasses));
+  visibleClasses.forEach((c, idx) => {
     const phase = c.phase || '';
     const isGraduated = c.status === '已毕业';
     // 默认不显示毕业班级，除非勾选显示
@@ -1427,9 +1428,9 @@ function renderClassProgress() {
   let html = '';
   const showGrad = document.getElementById('showGraduatedProgress')?.checked || false;
   // 按 sort_order 排序
-  _classes.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
-  
-  _classes.forEach((c, idx) => {
+  const sortedClasses = [..._classes].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+  const visibleClasses = sortedClasses.filter(c => !(c.status === '已毕业' && !showGrad));
+  visibleClasses.forEach((c, idx) => {
     // 默认不显示毕业班级，除非勾选显示
     if (c.status === '已毕业' && !showGrad) return;
     const totalHours = c.total_hours || 0;
