@@ -1855,39 +1855,62 @@ function initClassDragSort() {
 }
 
 async function saveClassListSort() {
-  let count = 0;
-  for (const c of _classes) {
+  const results = await Promise.all(_classes.map(async c => {
     const { error } = await sb.from('classes').update({sort_order: c.sort_order}).eq('id', c.id);
-    if (error) { showToast('保存排序失败: ' + error.message, false); return; }
-    count++;
-  }
-  showToast('已保存 ' + count + ' 个班级的排序');
+    return { error };
+  }));
+  const failed = results.filter(r => r.error);
+  if (failed.length > 0) { showToast('保存排序失败: ' + failed[0].error.message, false); return; }
+  showToast('已保存 ' + _classes.length + ' 个班级的排序');
 }
 
 async function saveClassProgress() {
   const inputs = document.querySelectorAll('.statsTbody input');
-  let count = 0;
+
+  // 按班级聚合变更字段，避免 64 次串行请求
+  const updates = {};
+  let changedCount = 0;
   for (const inp of inputs) {
     const cid = parseInt(inp.dataset.cid);
     const field = inp.dataset.field;
     const value = parseFloat(inp.value) || 0;
-    const { error } = await sb.from('classes').update({[field]: value}).eq('id', cid);
-    if (error) { showToast('保存失败: '+error.message, false); return; }
-    count++;
-  }
-  
-  // 保存排序
-  let sortSaved = 0;
-  for (const c of _classes) {
-    if (c.sort_order !== undefined) {
-      const { error } = await sb.from('classes').update({sort_order: c.sort_order}).eq('id', c.id);
-      if (!error) sortSaved++;
+    const cls = _classes.find(c => c.id === cid);
+    const oldValue = cls ? (cls[field] || 0) : 0;
+    if (value !== oldValue) {
+      if (!updates[cid]) updates[cid] = {};
+      updates[cid][field] = value;
+      changedCount++;
     }
   }
-  
+
+  // 并行更新所有有变更的班级
+  const classIds = Object.keys(updates);
+  if (classIds.length > 0) {
+    const results = await Promise.all(classIds.map(async cid => {
+      const { error } = await sb.from('classes').update(updates[cid]).eq('id', parseInt(cid));
+      return { cid, error };
+    }));
+    const failed = results.filter(r => r.error);
+    if (failed.length > 0) {
+      showToast('保存失败: ' + failed[0].error.message, false);
+      return;
+    }
+  }
+
+  // 保存排序（并行）
+  let sortSaved = 0;
+  const sortPromises = _classes
+    .filter(c => c.sort_order !== undefined)
+    .map(async c => {
+      const { error } = await sb.from('classes').update({sort_order: c.sort_order}).eq('id', c.id);
+      if (!error) sortSaved++;
+      return { error };
+    });
+  await Promise.all(sortPromises);
+
   await loadAll();
   renderClassProgress();
-  showToast('已保存 ' + count + ' 项排课数据' + (sortSaved > 0 ? ' + ' + sortSaved + ' 项排序' : ''));
+  showToast('已保存 ' + changedCount + ' 项排课数据' + (sortSaved > 0 ? ' + ' + sortSaved + ' 项排序' : ''));
 }
 
 // ═══════════════════════════════════════
