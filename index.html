@@ -76,6 +76,11 @@ tbody td{padding:8px 8px;font-size:13px;text-align:center;border-bottom:1px soli
 .stu-att-input.changed{background:#fef3c7;border-color:#f59e0b}
 .stu-leave-input{width:36px;padding:2px 1px;border:1px solid #fecaca;border-radius:4px;text-align:center;font-size:11px;color:#dc2626}
 .stu-leave-input:focus{outline:none;border-color:#dc2626;background:#fef2f2}
+/* 批量登记今日出勤 */
+.hrs-pill{background:#f1f5f9;color:#475569;border:1px solid #cbd5e1}
+.hrs-pill.active{background:#2563eb;color:#fff;border-color:#2563eb}
+.batch-att{background:#dcfce7;color:#166534;border:1px solid #bbf7d0}
+.batch-leave{background:#fee2e2;color:#b91c1c;border:1px solid #fecaca}
 .pbar{height:6px;background:#e2e8f0;border-radius:3px;overflow:hidden;width:60px;display:inline-block;vertical-align:middle;margin-top:3px}
 .pfill{height:100%;border-radius:3px}
 .toast{position:fixed;top:20px;right:20px;padding:12px 20px;border-radius:10px;color:#fff;font-size:14px;font-weight:600;z-index:300;opacity:0;transform:translateX(20px);transition:.3s;max-width:400px}
@@ -236,6 +241,7 @@ tr.drag-over-bottom td{box-shadow:inset 0 -3px 0 0 #3b82f6}
       <span id="stuAttControls" style="display:none;margin-left:8px;gap:6px;align-items:center">
         <label style="font-size:12px;margin-left:4px">年：<input type="number" id="stuYearFilter" value="2026" min="2020" max="2030" style="width:60px;padding:4px 8px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px" onchange="renderStudents()"></label>
         <button class="btn btn-primary btn-sm" onclick="saveStuAttendance()">保存登记</button>
+        <button class="btn btn-sm" style="background:#10b981;color:#fff" onclick="openBatchAttModal()">＋ 批量登记今日出勤</button>
       </span>
       <button class="btn btn-primary btn-sm" onclick="openStudentModal()" style="margin-left:auto">＋ 新增学员</button>
       <button class="btn btn-gray btn-sm" onclick="exportTab('students')">📥 导出</button>
@@ -383,6 +389,39 @@ tr.drag-over-bottom td{box-shadow:inset 0 -3px 0 0 #3b82f6}
     <div class="form-group"><label>续费金额（¥）</label><input type="number" id="renewalAmount" value="0" min="0" step="100"></div>
     <div id="renewalHistory" style="margin-top:14px;max-height:120px;overflow-y:auto"></div>
     <div class="form-actions" style="margin-top:16px"><button class="btn btn-gray" onclick="closeModal('renewalModal')">取消</button><button class="btn btn-primary" onclick="saveRenewal()">确认续费</button></div>
+  </div>
+</div>
+
+<!-- 批量登记今日出勤 -->
+<div class="modal-overlay" id="batchAttModal">
+  <div class="modal" style="max-width:560px">
+    <h3>📋 批量登记今日出勤 · <span id="batchClassName"></span></h3>
+    <div class="form-group">
+      <label>日期（默认今天，决定计入哪个月份）</label>
+      <input type="date" id="batchAttDate">
+    </div>
+    <div class="form-group">
+      <label>本次课时（周中常 1.0、周末常 1.5，可手动填其它）</label>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button type="button" class="btn btn-sm hrs-pill" data-h="1.0" onclick="setBatchHours(1.0,this)">1.0 课时</button>
+        <button type="button" class="btn btn-sm hrs-pill active" data-h="1.5" onclick="setBatchHours(1.5,this)">1.5 课时</button>
+        <input type="number" id="batchAttHours" value="1.5" min="0" step="0.5" oninput="updateBatchSummary();document.querySelectorAll('#batchAttModal .hrs-pill').forEach(b=>b.classList.remove('active'))" style="width:80px;padding:6px 8px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px">
+        <span style="font-size:12px;color:#64748b">手动改值后自选按钮会取消高亮</span>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div style="font-size:13px;color:#475569;font-weight:600">学员出勤状态（默认全部出勤）</div>
+      <div style="display:flex;gap:6px">
+        <button type="button" class="btn btn-xs" style="background:#dcfce7;color:#166534" onclick="batchSetAll('att')">全出勤</button>
+        <button type="button" class="btn btn-xs" style="background:#fee2e2;color:#b91c1c" onclick="batchSetAll('leave')">全请假</button>
+      </div>
+    </div>
+    <div id="batchStuList" style="max-height:34vh;overflow-y:auto;border:1px solid #e2e8f0;border-radius:10px;padding:4px"></div>
+    <div id="batchSummary" style="margin-top:10px;font-size:13px;color:#475569;line-height:1.6"></div>
+    <div class="form-actions">
+      <button class="btn btn-gray" onclick="closeModal('batchAttModal')">取消</button>
+      <button class="btn btn-primary" onclick="saveBatchAttendance()">确认登记</button>
+    </div>
   </div>
 </div>
 
@@ -1540,6 +1579,139 @@ async function saveStuAttendance() {
   await loadAll();
   renderStudents();
   showToast('已保存 ' + attRecords.length + ' 条上课记录' + (leaveSaved ? '，' + leaveSaved + ' 条请假记录' : ''));
+}
+
+// ═══════════════════════════════════════
+// 学员出勤 · 批量登记今日出勤
+// ═══════════════════════════════════════
+let _batchStates = {};   // sid -> 'att' | 'leave'
+let _batchStuIds = [];   // 有序学员 id 列表
+
+function openBatchAttModal() {
+  const filterId = document.getElementById('stuClassFilter').value;
+  if (filterId === 'all') { showToast('请先选择班级', false); return; }
+  const cid = parseInt(filterId);
+  const cls = _classes.find(c => c.id === cid);
+  document.getElementById('batchClassName').textContent = cls ? cls.name : '';
+
+  // 默认日期 = 今天（本地时区，避免 UTC 偏移）
+  const now = new Date();
+  const defDate = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+  document.getElementById('batchAttDate').value = defDate;
+
+  // 默认课时 1.5，并高亮对应快捷按钮
+  const hrsInput = document.getElementById('batchAttHours');
+  hrsInput.value = 1.5;
+  document.querySelectorAll('#batchAttModal .hrs-pill').forEach(b => {
+    b.classList.toggle('active', parseFloat(b.dataset.h) === 1.5);
+  });
+
+  // 仅列在读（非毕业）学员
+  const list = _students.filter(s => s.class_id === cid && s.status !== '毕业')
+    .sort((a,b) => (a.sort_order||0) - (b.sort_order||0));
+  _batchStuIds = list.map(s => s.id);
+  _batchStates = {};
+  list.forEach(s => { _batchStates[s.id] = 'att'; });
+
+  renderBatchStuList();
+  updateBatchSummary();
+  document.getElementById('batchAttModal').classList.add('show');
+}
+
+function renderBatchStuList() {
+  const box = document.getElementById('batchStuList');
+  if (_batchStuIds.length === 0) {
+    box.innerHTML = '<div style="padding:14px;color:#94a3b8;font-size:13px">该班级暂无在读学员</div>';
+    return;
+  }
+  box.innerHTML = _batchStuIds.map(sid => {
+    const s = _students.find(x => x.id === sid);
+    if (!s) return '';
+    const isAtt = _batchStates[sid] === 'att';
+    return '<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 8px;border-bottom:1px solid #f1f5f9">' +
+      '<span style="font-size:14px;font-weight:500">' + s.name + '</span>' +
+      '<button type="button" class="btn btn-xs ' + (isAtt ? 'batch-att' : 'batch-leave') + '" onclick="toggleBatchStu(' + sid + ')">' +
+        (isAtt ? '✅ 出勤' : '🏠 请假') +
+      '</button>' +
+    '</div>';
+  }).join('');
+}
+
+function toggleBatchStu(sid) {
+  _batchStates[sid] = _batchStates[sid] === 'att' ? 'leave' : 'att';
+  renderBatchStuList();
+  updateBatchSummary();
+}
+
+function batchSetAll(state) {
+  _batchStuIds.forEach(sid => { _batchStates[sid] = state; });
+  renderBatchStuList();
+  updateBatchSummary();
+}
+
+function setBatchHours(val, btn) {
+  document.getElementById('batchAttHours').value = val;
+  document.querySelectorAll('#batchAttModal .hrs-pill').forEach(b => {
+    b.classList.toggle('active', b === btn);
+  });
+  updateBatchSummary();
+}
+
+function updateBatchSummary() {
+  const att = _batchStuIds.filter(sid => _batchStates[sid] === 'att').length;
+  const leave = _batchStuIds.filter(sid => _batchStates[sid] === 'leave').length;
+  const hrs = parseFloat(document.getElementById('batchAttHours').value) || 0;
+  const el = document.getElementById('batchSummary');
+  if (!el) return;
+  el.innerHTML =
+    '将登记 <b style="color:#2563eb">' + att + '</b> 人出勤，每人 ' + hrs + ' 课时 → 本次新增上课 <b style="color:#2563eb">' + (att*hrs).toFixed(1) + '</b> 课时；' +
+    '<br><b style="color:#dc2626">' + leave + '</b> 人请假 → 本次新增请假 <b style="color:#dc2626">' + (leave*hrs).toFixed(1) + '</b> 课时。' +
+    '<br><span style="color:#64748b;font-size:12px">（在已有月度课时上累加，不覆盖原有数据）</span>';
+}
+
+async function saveBatchAttendance() {
+  const dateStr = document.getElementById('batchAttDate').value;
+  if (!dateStr) { showToast('请选择日期', false); return; }
+  const d = new Date(dateStr + 'T00:00:00');
+  const year = d.getFullYear();
+  const month = d.getMonth() + 1;
+  const hours = parseFloat(document.getElementById('batchAttHours').value) || 0;
+  if (hours <= 0) { showToast('课时必须大于 0', false); return; }
+
+  const attRecords = [];
+  const leaveRecords = [];
+  _batchStuIds.forEach(sid => {
+    const st = _batchStates[sid];
+    if (st === 'att') {
+      const rec = _attendance.find(a => a.student_id === sid && a.year === year && a.month === month);
+      const exist = rec ? (rec.hours || 0) : 0;
+      attRecords.push({ student_id: sid, year: year, month: month, hours: Math.round((exist + hours) * 10) / 10 });
+    } else {
+      const rec = _leaves.find(l => l.student_id === sid && l.year === year && l.month === month);
+      const exist = rec ? (rec.hours || 0) : 0;
+      leaveRecords.push({ student_id: sid, year: year, month: month, hours: Math.round((exist + hours) * 10) / 10 });
+    }
+  });
+
+  if (attRecords.length === 0 && leaveRecords.length === 0) { showToast('没有可登记的学员', false); return; }
+
+  let ok = true;
+  const msgs = [];
+  if (attRecords.length) {
+    const { error } = await sb.from('attendance').upsert(attRecords, { onConflict: 'student_id,year,month' });
+    if (error) { ok = false; msgs.push('上课课时保存失败: ' + error.message); }
+    else msgs.push('已登记 ' + attRecords.length + ' 人出勤');
+  }
+  if (leaveRecords.length) {
+    const { error: lerr } = await sb.from('leaves').upsert(leaveRecords, { onConflict: 'student_id,year,month' });
+    if (lerr) { ok = false; msgs.push('请假课时保存失败（请先在 Supabase 创建 leaves 表）'); }
+    else msgs.push(leaveRecords.length + ' 人请假');
+  }
+
+  closeModal('batchAttModal');
+  await loadAll();
+  renderStudents();
+  showToast(msgs.join('；'), ok);
 }
 
 // ═══════════════════════════════════════
