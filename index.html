@@ -71,6 +71,11 @@ tbody td{padding:8px 8px;font-size:13px;text-align:center;border-bottom:1px soli
 /* 学员出勤：卡片撑满视口，避免底部大量留白 */
 #sec-students .card{display:flex;flex-direction:column;height:calc(100vh - 180px)}
 #sec-students .att-table-wrap{flex:1;min-height:0;max-height:none;overflow:auto}
+/* 班级管理：顶部标题+统计固定，分组内容内部滚动 */
+#sec-classes .card{display:flex;flex-direction:column;height:calc(100vh - 180px)}
+#sec-classes .card > h2{flex-shrink:0;margin-bottom:14px}
+#sec-classes .summary-bar{flex-shrink:0}
+#sec-classes #classGroupsContainer{flex:1;min-height:0;overflow:auto;padding-right:4px}
 .stu-att-input{width:36px;padding:2px 1px;border:1px solid #cbd5e1;border-radius:4px;text-align:center;font-size:11px}
 .stu-att-input:focus{outline:none;border-color:#2563eb;background:#f0f7ff}
 .stu-att-input.changed{background:#fef3c7;border-color:#f59e0b}
