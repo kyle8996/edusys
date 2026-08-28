@@ -70,7 +70,7 @@ tbody td{padding:8px 8px;font-size:13px;text-align:center;border-bottom:1px soli
 .att-table-wrap td input.changed{background:#fef3c7;border-color:#f59e0b}
 /* 学员出勤：卡片撑满视口，避免底部大量留白 */
 #sec-students .card{display:flex;flex-direction:column;min-height:calc(100vh - 180px)}
-#sec-students .att-table-wrap{flex:1;max-height:none}
+#sec-students .att-table-wrap{flex:1;min-height:0;max-height:none;overflow:auto}
 .stu-att-input{width:36px;padding:2px 1px;border:1px solid #cbd5e1;border-radius:4px;text-align:center;font-size:11px}
 .stu-att-input:focus{outline:none;border-color:#2563eb;background:#f0f7ff}
 .stu-att-input.changed{background:#fef3c7;border-color:#f59e0b}
