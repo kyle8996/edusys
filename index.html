@@ -491,6 +491,7 @@ async function loadAll() {
     if (cS) _students = cS;
     if (cA) _attendance = cA;
     if (cL) _leaves = cL;
+    buildScheduleFromClasses(); // 先用缓存班级构建课程表
     initApp(); // 先渲染缓存
   }
 
@@ -507,6 +508,8 @@ async function loadAll() {
   } else {
     _classes = cr.data;
   }
+  buildScheduleFromClasses();           // 用云端班级重建课程表
+  await migrateLocalScheduleIfNeeded(); // 一次性把本地编辑的排课迁移到云端
   if (sr.error) { showToast('加载学员失败: '+sr.error.message, false); return; }
   if (ar.error) { showToast('加载课时失败: '+ar.error.message, false); return; }
   // leaves 表可能尚未创建，容错：不影响其余功能
@@ -982,52 +985,31 @@ function closeModal(id) { document.getElementById(id).classList.remove('show'); 
 async function saveClass() {
   const name = document.getElementById('className').value.trim();
   if (!name) { showToast('请输入班级名称', false); return; }
-  const data = {
-    name: name,
-    phase: document.getElementById('classPhase').value,
-    freq: parseFloat(document.getElementById('classFreq').value) || 0,
-    total_hours: parseFloat(document.getElementById('classTotal').value) || 0,
-    before_hours: parseFloat(document.getElementById('classBefore').value) || 0
-  };
-  // 排课数据
+  // 排课数据（随班级一起写入云端 classes.schedule）
   const schData = {
     teacher: document.getElementById('classTeacher').value,
     openDate: document.getElementById('classOpenDate').value,
     capacity: parseInt(document.getElementById('classCapacity').value) || 8,
     sessions: getSchSessions()
   };
+  const data = {
+    name: name,
+    phase: document.getElementById('classPhase').value,
+    freq: parseFloat(document.getElementById('classFreq').value) || 0,
+    total_hours: parseFloat(document.getElementById('classTotal').value) || 0,
+    before_hours: parseFloat(document.getElementById('classBefore').value) || 0,
+    schedule: schData
+  };
   const editId = document.getElementById('classEditId').value;
   if (editId) {
     const { error } = await sb.from('classes').update(data).eq('id', parseInt(editId));
     if (error) { showToast('更新失败: '+error.message, false); return; }
-    // 更新排课数据
-    const schIdx = SCHEDULE_DATA.findIndex(s => s.classId === parseInt(editId));
-    if (schIdx >= 0) {
-      Object.assign(SCHEDULE_DATA[schIdx], {
-        teacher: schData.teacher, openDate: schData.openDate,
-        capacity: schData.capacity, sessions: schData.sessions,
-        statusOverride: schData.openDate ? undefined : '未开课'
-      });
-      try { localStorage.setItem('edusys_schedule', JSON.stringify(SCHEDULE_DATA)); localStorage.setItem('edusys_schedule_ver', String(SCHEDULE_VERSION)); } catch(e){}
-    }
     showToast('班级已更新');
   } else {
     const maxId = _classes.reduce((m, c) => Math.max(m, c.id), 0);
     data.id = maxId + 1;
-    const newId = data.id;
     const { error } = await sb.from('classes').insert(data);
     if (error) { showToast('新增失败: '+error.message, false); return; }
-    // 自动加入排课表
-    const phase = data.phase;
-    SCHEDULE_DATA.push({
-      classId: newId, name: name, phase: phase,
-      teacher: schData.teacher,
-      sessions: schData.sessions,
-      openDate: schData.openDate,
-      capacity: schData.capacity,
-      statusOverride: schData.openDate ? undefined : '未开课'
-    });
-    try { localStorage.setItem('edusys_schedule', JSON.stringify(SCHEDULE_DATA)); } catch(e){}
     showToast('班级已新增（已自动加入课程表）');
   }
   closeClassModal();
@@ -2321,7 +2303,9 @@ function exportStats() {
 // Tab 4: 课程表预览
 // ═══════════════════════════════════════
 // 排课数据（根据实际排课表配置）
-const SCHEDULE_DATA = [
+// 课程表数据改为从云端 classes.schedule 加载；此处仅保留默认兜底（云端为空时使用）
+let SCHEDULE_DATA = [];
+const DEFAULT_SCHEDULE = [
   // Dora 班级
   {classId:1, name:'K1001', phase:'K1', teacher:'Dora',
    sessions:[{day:2,period:'eve',start:'18:00',end:'19:00'},{day:5,period:'pm',start:'15:00',end:'16:30'}],
@@ -2353,6 +2337,57 @@ const SCHEDULE_DATA = [
    openDate:'', capacity:8, statusOverride:'未开课'}
   // SH01 寒假班不显示在课程表预览中
 ];
+
+// 从云端 classes.schedule 构建课程表数据；云端为空则用 DEFAULT_SCHEDULE 兜底；短期班(SH)不显示
+function buildScheduleFromClasses() {
+  SCHEDULE_DATA = [];
+  (_classes || []).forEach(c => {
+    const nm = (c.name || '').toUpperCase();
+    if (/SH/.test(nm)) return; // 短期班不进入课程表预览
+    const def = DEFAULT_SCHEDULE.find(d => d.classId === c.id);
+    const cloud = (c.schedule && typeof c.schedule === 'object') ? c.schedule : null;
+    const src = cloud || def || {};
+    SCHEDULE_DATA.push({
+      classId: c.id,
+      name: c.name,
+      phase: c.phase || (def && def.phase) || '',
+      teacher: src.teacher || 'Dora',
+      openDate: src.openDate || '',
+      capacity: src.capacity || 8,
+      sessions: Array.isArray(src.sessions) ? src.sessions : [],
+      statusOverride: src.openDate ? undefined : '未开课'
+    });
+  });
+}
+
+// 一次性迁移：把线上浏览器 localStorage 中编辑过的排课写回云端（仅当本地有缓存且版本匹配时）
+async function migrateLocalScheduleIfNeeded() {
+  try {
+    const ver = localStorage.getItem('edusys_schedule_ver');
+    const saved = localStorage.getItem('edusys_schedule');
+    if (ver !== String(SCHEDULE_VERSION) || !saved) return;
+    let parsed = [];
+    try { parsed = JSON.parse(saved); } catch(e){ return; }
+    parsed.forEach(p => {
+      const t = SCHEDULE_DATA.find(s => s.classId === p.classId);
+      if (t) Object.assign(t, {
+        teacher: p.teacher || t.teacher,
+        openDate: p.openDate || '',
+        capacity: p.capacity || 8,
+        sessions: Array.isArray(p.sessions) ? p.sessions : t.sessions,
+        statusOverride: (p.openDate) ? undefined : '未开课'
+      });
+    });
+    for (const s of SCHEDULE_DATA) {
+      await sb.from('classes').update({
+        schedule: { teacher: s.teacher, openDate: s.openDate, capacity: s.capacity, sessions: s.sessions }
+      }).eq('id', s.classId);
+    }
+    localStorage.removeItem('edusys_schedule');
+    localStorage.removeItem('edusys_schedule_ver');
+    console.log('[课程表] 已将本地编辑的排课迁移到云端');
+  } catch(e) { console.warn('[课程表] 排课迁移失败:', e); }
+}
 
 let _schWeekOffset = 0;
 const DAY_NAMES = ['周一','周二','周三','周四','周五','周六','周日'];
@@ -2680,7 +2715,7 @@ function addEditorSessRow(schIdx, day, start, end) {
 
 function closeSchEditor() { document.getElementById('schEditorModal').classList.remove('show'); }
 
-function saveSchEditor() {
+async function saveSchEditor() {
   // 收集表单数据
   const errors = [];
   SCHEDULE_DATA.forEach((sch, idx) => {
@@ -2709,8 +2744,13 @@ function saveSchEditor() {
     if (!confirm('以下班级没有填写任何上课时间：' + errors.join('、') + '\n\n确定要保存吗？')) return;
   }
 
-  // 持久化到 localStorage
-  try { localStorage.setItem('edusys_schedule', JSON.stringify(SCHEDULE_DATA)); localStorage.setItem('edusys_schedule_ver', String(SCHEDULE_VERSION)); } catch(e){}
+  // 持久化到云端 classes.schedule（每个班级各存一份）
+  for (const sch of SCHEDULE_DATA) {
+    const { error } = await sb.from('classes').update({
+      schedule: { teacher: sch.teacher, openDate: sch.openDate, capacity: sch.capacity, sessions: sch.sessions }
+    }).eq('id', sch.classId);
+    if (error) { showToast('保存失败: '+error.message, false); return; }
+  }
   closeSchEditor();
   renderSchedule();
   showToast('排课已保存 ✓');
@@ -2729,35 +2769,9 @@ function initApp() {
 // 登录
 const LOGIN_PWD = 'DK0308';
 
-// 加载用户自定义排课数据（localStorage 持久化）
+// 加载用户自定义排课数据版本号（仅用于一次性迁移判断，数据现已持久化到云端 classes.schedule）
 // SCHEDULE_VERSION 2 = day 约定 0=周一（旧版用 JS Date.getDay 0=周日，需迁移）
 const SCHEDULE_VERSION = 6;
-(function() {
-  try {
-    const savedVer = localStorage.getItem('edusys_schedule_ver') || '1';
-    const saved = localStorage.getItem('edusys_schedule');
-    if (!saved) return;
-    let parsed = JSON.parse(saved);
-    // 版本不匹配时：清除旧缓存，避免脏数据覆盖硬编码数据
-    if (savedVer !== String(SCHEDULE_VERSION)) {
-      console.log('[课程表] 检测到旧版排课缓存(v'+savedVer+')，已自动清除，使用系统默认排课');
-      localStorage.removeItem('edusys_schedule');
-      localStorage.setItem('edusys_schedule_ver', String(SCHEDULE_VERSION));
-      return; // 直接使用代码中的硬编码数据（已是正确的 day 值）
-    }
-    // 版本匹配：允许 localStorage 覆盖（用户可能已通过弹窗编辑过排课）
-    parsed.forEach(p => {
-      const existing = SCHEDULE_DATA.find(s => s.classId === p.classId);
-      if (existing) {
-        Object.assign(existing, { teacher: p.teacher, sessions: p.sessions, openDate: p.openDate, capacity: p.capacity, statusOverride: p.statusOverride });
-      } else {
-        SCHEDULE_DATA.push(p); // 用户新增的班级
-      }
-    });
-  } catch(e) {
-    console.warn('[课程表] 排课缓存加载失败:', e);
-  }
-})();
 
 function doLogin() {
   initSb();
