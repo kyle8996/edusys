@@ -96,6 +96,7 @@ tbody td{padding:8px 8px;font-size:13px;text-align:center;border-bottom:1px soli
 .badge-warn{font-size:9px;background:#f97316;color:#fff;padding:1px 6px;border-radius:10px;margin-left:4px}
 .row-grad{background:#f3e8ff !important;box-shadow:inset 3px 0 0 #7c3aed}.row-grad td{color:#475569}
 .grad-tag{font-size:9px;background:#7c3aed;color:#fff;padding:1px 6px;border-radius:10px;margin-left:4px}
+.refund-tag{font-size:9px;background:#b91c1c;color:#fff;padding:1px 6px;border-radius:10px;margin-left:4px;vertical-align:middle}
 tr[draggable="true"]{cursor:grab}tr[draggable="true"]:active{cursor:grabbing}tr[draggable="true"]:hover{background:#f0f9ff!important}
 tr.dragging{opacity:0.4;background:#dbeafe!important}
 tr.drag-over-top td{box-shadow:inset 0 3px 0 0 #3b82f6}
@@ -461,7 +462,7 @@ function initSb() {
 if (!initSb()) document.addEventListener('DOMContentLoaded', initSb);
 
 // 数据缓存
-let _classes = [], _students = [], _attendance = [], _leaves = [];
+let _classes = [], _students = [], _attendance = [], _leaves = [], _refunds = [];
 
 // 客户端缓存：重复打开秒出数（sessionStorage），后台仍会拉取最新数据覆盖
 const _CACHE_PREFIX = 'edusys_cache_';
@@ -496,11 +497,12 @@ async function loadAll() {
   }
 
   // 单批次并行加载全部表，减少往返；attendance/leaves 仅取必要字段降低传输量
-  const [cr, sr, ar, lr] = await Promise.all([
+  const [cr, sr, ar, lr, rr] = await Promise.all([
     sb.from('classes').select('*, sort_order').order('sort_order'),
     sb.from('students').select('*').order('sort_order'),
     sb.from('attendance').select('id,student_id,year,month,hours'),
-    sb.from('leaves').select('id,student_id,year,month,hours')
+    sb.from('leaves').select('id,student_id,year,month,hours'),
+    sb.from('refunds').select('*')
   ]);
   if (cr.error) {
     const cr2 = await sb.from('classes').select('*').order('id');
@@ -514,6 +516,7 @@ async function loadAll() {
   if (ar.error) { showToast('加载课时失败: '+ar.error.message, false); return; }
   // leaves 表可能尚未创建，容错：不影响其余功能
   _leaves = (lr && !lr.error) ? lr.data : [];
+  _refunds = (rr && !rr.error) ? rr.data : [];
   _students = sr.data; _attendance = ar.data;
 
   // 写入缓存供下次秒开
@@ -521,6 +524,7 @@ async function loadAll() {
   _cacheSet('students', _students);
   _cacheSet('attendance', _attendance);
   _cacheSet('leaves', _leaves);
+  _cacheSet('refunds', _refunds);
   
   // 初始化默认 sort_order（如果没有或重复）
   const used = new Set();
@@ -549,7 +553,17 @@ function calcRemaining(sid) {
   if (!s) return 0;
   const paid = s.paid_hours || 0;
   const consumed = _attendance.filter(a => a.student_id === sid).reduce((sum, a) => sum + (a.hours || 0), 0);
-  return Math.max(0, Math.round((paid - consumed) * 10) / 10);
+  // 退费联动：扣减该学员退费课时数（按姓名匹配销售系统 refunds 表）
+  const name = (s.name || '').trim();
+  const refunded = _refunds.reduce((sum, r) => sum + ((r.student_name || '').trim() === name ? (parseFloat(r.remaining_hours) || 0) : 0), 0);
+  return Math.max(0, Math.round((paid - consumed - refunded) * 10) / 10);
+}
+
+// 该学员是否已退费（按姓名），返回退课时费合计（用于单元格标注）
+function getStudentRefund(student) {
+  const name = (student.name || '').trim();
+  return _refunds.filter(r => (r.student_name || '').trim() === name)
+    .reduce((s, r) => s + (parseFloat(r.refund_class_fee) || 0), 0);
 }
 
 function getClassName(cid) {
@@ -1178,7 +1192,7 @@ async function renderStudents() {
           '<td>' + consumed.toFixed(1) + '</td>' +
           '<td>' + (s.paid_hours||0) + '</td>' +
           '<td style="color:#dc2626;font-weight:600">' + leaveTotal.toFixed(1) + '</td>' +
-          '<td><b style="display:inline-block;padding:4px 10px;border-radius:6px;font-size:15px;background:' + (rem <= 10 ? '#fff7ed' : '#eff6ff') + ';color:' + (rem <= 10 ? '#ea580c' : '#2563eb') + '">' + rem + '</b></td>' +
+          '<td><b style="display:inline-block;padding:4px 10px;border-radius:6px;font-size:15px;background:' + (rem <= 10 ? '#fff7ed' : '#eff6ff') + ';color:' + (rem <= 10 ? '#ea580c' : '#2563eb') + '">' + rem + '</b>' + (getStudentRefund(s) > 0 ? '<span class="refund-tag">已退费</span>' : '') + '</td>' +
           '<td>' +
             '<label class="status-toggle" onclick="toggleStatus(' + s.id + ')" title="切换在读/毕业">' +
             '<input type="checkbox" ' + (isGrad ? '' : 'checked') + '>' +
@@ -1269,7 +1283,7 @@ async function renderStudents() {
       html += '<td class="att-total">' + rowYearTotal.toFixed(1) + '</td>' +
         '<td class="att-leave-total" style="color:#dc2626">' + leaveYearTotal.toFixed(1) + '</td>' +
         '<td>' + (s.paid_hours||0) + '</td>' +
-        '<td><b style="color:' + (rem <= 10 ? '#f97316' : '#2563eb') + '">' + rem + '</b></td>' +
+        '<td><b style="color:' + (rem <= 10 ? '#f97316' : '#2563eb') + '">' + rem + '</b>' + (getStudentRefund(s) > 0 ? '<span class="refund-tag">已退费</span>' : '') + '</td>' +
         '<td>' +
           '<label class="status-toggle" onclick="toggleStatus(' + s.id + ')" title="切换在读/毕业">' +
           '<input type="checkbox" ' + (isGrad ? '' : 'checked') + '>' +
