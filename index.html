@@ -1174,7 +1174,8 @@ async function renderStudents() {
         const isGrad = s.status === '毕业';
         const clsObj = _classes.find(c => c.id === s.class_id);
         const isSummer = clsObj && isSummerClass(clsObj);
-        const isWarn = !isGrad && !isSummer && rem <= 10;
+        const hasRefund = getStudentRefund(s) > 0;
+        const isWarn = !isGrad && !isSummer && !hasRefund && rem <= 10;
         const rowClass = isGrad ? 'row-grad' : (isWarn ? 'row-warn' : '');
         html += '<tr class="' + rowClass + '" style="background:' + col.block + '" draggable="true" ' +
           'ondragstart="dragStart(event,' + s.id + ')" ' +
@@ -1246,7 +1247,8 @@ async function renderStudents() {
       const rem = calcRemaining(s.id);
       const isGrad = s.status === '毕业';
       const isSummer = cls && isSummerClass(cls);
-      const isWarn = !isGrad && !isSummer && rem <= 10;
+      const hasRefund = getStudentRefund(s) > 0;
+      const isWarn = !isGrad && !isSummer && !hasRefund && rem <= 10;
       const rowClass = isGrad ? 'row-grad' : (isWarn ? 'row-warn' : '');
 
       html += '<tr class="' + rowClass + '" data-sid="' + s.id + '" draggable="true" ' +
