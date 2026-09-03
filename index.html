@@ -120,7 +120,7 @@ tr.drag-over-bottom td{box-shadow:inset 0 -3px 0 0 #3b82f6}
 .summary-item .num{font-size:28px;font-weight:800;line-height:1.2;position:relative;cursor:help}
 .summary-item .lbl{font-size:11px;color:#64748b;margin-top:2px}
 .summary-item .sub{font-size:11px;color:#94a3b8;margin-top:1px}
-.sc-active .num{color:#2563eb}.sc-opened .num{color:#10b981}.sc-notopened .num{color:#94a3b8}.sc-grad .num{color:#8b5cf6}.sc-shortterm .num{color:#f59e0b}
+.sc-active .num{color:#2563eb}.sc-opened .num{color:#10b981}.sc-notopened .num{color:#94a3b8}.sc-grad .num{color:#8b5cf6}.sc-shortterm .num{color:#f59e0b}.sc-refund .num{color:#dc2626}
 .summary-tip{display:none;position:absolute;z-index:9999;bottom:100%;left:50%;transform:translateX(-50%);margin-bottom:8px;min-width:160px;max-width:280px;background:#1e293b;color:#e2e8f0;border-radius:10px;padding:10px 14px;font-size:12px;line-height:1.6;box-shadow:0 8px 30px rgba(0,0,0,.4);text-align:left;white-space:normal;font-weight:400}
 .summary-item .num:hover .summary-tip{display:block}
 .summary-tip-title{color:#fff;font-weight:700;margin-bottom:4px;border-bottom:1px solid #475569;padding-bottom:4px;font-size:13px}
@@ -730,7 +730,8 @@ function renderClasses() {
     const cls = _classes.find(c => c.id === s.class_id);
     return cls && cls.status !== '已毕业';
   });
-  const gradStu = _students.filter(s => s.status === '毕业');
+  const gradStu = _students.filter(s => s.status === '毕业' && getStudentRefund(s) <= 0);
+  const refundStu = _students.filter(s => getStudentRefund(s) > 0);
   const gradClassList = _classes.filter(c => c.status === '已毕业');
   // 已开课 = 常规在读 + 班级累计排课 > 0（排除短期班）
   const openedCount = activeStu.filter(s => {
@@ -759,7 +760,8 @@ function renderClasses() {
     '<div class="summary-item sc-active"><div class="num">' + activeStu.length + '</div><div class="lbl">在读学员</div></div>' +
     '<div class="summary-item sc-opened"><div class="num">' + openedCount + '</div><div class="lbl">已开课</div><div class="sub">累计排课 &gt; 0</div></div>' +
     '<div class="summary-item sc-notopened"><div class="num">' + notOpenedCount + renderSummaryTipGrouped('未开课学员', notOpenedGroups) + '</div><div class="lbl">未开课</div><div class="sub">累计排课 = 0</div></div>' +
-    '<div class="summary-item sc-grad"><div class="num">' + gradStu.length + renderSummaryTip('已毕业学员', gradStu.map(s => s.name || '—')) + '</div><div class="lbl">已毕业</div></div>' +
+    '<div class="summary-item sc-grad"><div class="num">' + gradStu.length + renderSummaryTip('毕业学员', gradStu.map(s => s.name || '—')) + '</div><div class="lbl">毕业</div></div>' +
+    '<div class="summary-item sc-refund"><div class="num">' + refundStu.length + renderSummaryTip('退费学员', refundStu.map(s => s.name || '—')) + '</div><div class="lbl">退费</div></div>' +
     '<div class="summary-item sc-grad"><div class="num">' + gradClassCount + renderSummaryTip('已毕业班级', gradClassList.map(c => c.name || '—')) + '</div><div class="lbl">已毕业班级</div></div>';
 
   const showGradClasses = document.getElementById('showGraduatedClasses').checked;
