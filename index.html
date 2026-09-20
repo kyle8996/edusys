@@ -1771,7 +1771,7 @@ function renderClassProgress() {
   const theadCells =
     '<th style="width:40px">序号</th><th style="text-align:left">班级</th><th>年前已上</th>' +
     months.map(m => '<th>' + m + '月排课</th>').join('') +
-    '<th>累计已上</th><th>阶段总课时</th><th>进度</th><th>状态</th>';
+    '<th>累计已上</th><th>阶段总课时</th><th>班级剩余课时</th><th>进度</th><th>状态</th>';
 
   const showGrad = document.getElementById('showGraduatedProgress')?.checked || false;
   // 按 sort_order 排序
@@ -1835,6 +1835,7 @@ function renderClassProgress() {
         months.map((m, i) => '<td><input type="number" value="' + (c[mkeys[i]]||0) + '" data-cid="' + c.id + '" data-field="' + mkeys[i] + '" style="width:60px;text-align:center"></td>').join('') +
         '<td><b>' + cumulative + '</b></td>' +
         '<td><b>' + totalHours + '</b></td>' +
+        '<td><b style="color:' + (totalHours - cumulative > 0 ? '#15803d' : '#dc2626') + '">' + (totalHours - cumulative) + '</b></td>' +
         '<td><div style="display:flex;align-items:center;gap:6px;justify-content:center">' +
           '<div class="pbar"><div class="pfill" style="width:' + Math.min(100,pct) + '%;background:' + barColor + '"></div></div>' +
           '<span style="font-size:11px">' + pct + '%</span></div></td>' +
@@ -2262,7 +2263,7 @@ function exportStats() {
     months.push(m);
     mkeys.push('m' + m);
   }
-  const headers = ['序号', '班级', '年前已上'].concat(months.map(m => m + '月排课')).concat(['累计已上', '阶段总课时', '进度', '状态']);
+  const headers = ['序号', '班级', '年前已上'].concat(months.map(m => m + '月排课')).concat(['累计已上', '阶段总课时', '班级剩余课时', '进度', '状态']);
 
   const sortedClasses = [..._classes].sort((a,b) => (a.sort_order||0) - (b.sort_order||0));
   const visibleClasses = sortedClasses.filter(c => !(c.status === '已毕业' && !showGrad));
@@ -2309,6 +2310,7 @@ function exportStats() {
         ...mkeys.map(k => (c[k] || 0) + ''),
         cumulative + '',
         totalHours + '',
+        (totalHours - cumulative) + '',
         pct + '%',
         statusText
       ]);
