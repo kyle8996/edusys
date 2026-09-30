@@ -709,6 +709,8 @@ function renderBirthdays() {
   if (!container) return;
   const m = _bdayMonth;            // 0-based
   const year = new Date().getFullYear();
+  // 已退费学员名单（refunds 表以 student_name 标识）
+  const refundedNames = new Set((_refunds || []).map(r => (r.student_name || '').trim()).filter(Boolean));
 
   // 按「日」归类：day -> [{name, className}]
   const byDay = {};
@@ -716,6 +718,9 @@ function renderBirthdays() {
   const classMap = {};
   _classes.forEach(c => { classMap[c.id] = c.name; });
   _students.forEach(s => {
+    const nm = (s.name || '').trim();
+    // 毕业 / 退费学员不计入生日提醒
+    if (s.status === '毕业' || refundedNames.has(nm)) return;
     if (s.birth_date) totalWithBirth++;
     const bd = parseBirthDate(s.birth_date);
     if (!bd || bd.m !== m + 1) return;
@@ -779,8 +784,12 @@ function exportBirthdays() {
   const m = _bdayMonth + 1;
   const byDay = {};
   const classMap = {};
+  const refundedNames = new Set((_refunds || []).map(r => (r.student_name || '').trim()).filter(Boolean));
   _classes.forEach(c => { classMap[c.id] = c.name; });
   _students.forEach(s => {
+    const nm = (s.name || '').trim();
+    // 毕业 / 退费学员不计入生日提醒
+    if (s.status === '毕业' || refundedNames.has(nm)) return;
     const bd = parseBirthDate(s.birth_date);
     if (!bd || bd.m !== m) return;
     (byDay[bd.d] = byDay[bd.d] || []).push((s.name || '') + (classMap[s.class_id] ? '（' + classMap[s.class_id] + '）' : ''));
