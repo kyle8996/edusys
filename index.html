@@ -17,7 +17,7 @@ body{font-family:-apple-system,'Microsoft YaHei','PingFang SC',sans-serif;backgr
 .nav .tabs button:hover,.nav .tabs button.active{background:rgba(255,255,255,.25);border-color:#fff}
 .card{background:#fff;border-radius:14px;box-shadow:0 2px 12px rgba(0,0,0,.06);margin:16px 24px;padding:20px 24px}
 /* 生日提醒：与课程表预览等页签一致的文档流布局，卡片高度锁定一屏，日历撑满卡片 */
-#sec-birthday .card{display:flex;flex-direction:column;height:calc(100vh - 175px);padding:14px 20px;overflow:hidden;margin-top:14px}
+#sec-birthday .card{display:flex;flex-direction:column;height:calc(100vh - 180px);padding:14px 20px;overflow:hidden;margin-top:14px}
 #sec-birthday .card h2,#sec-birthday .bday-nav,#sec-birthday .bday-legend{flex-shrink:0}
 #birthdayContainer{flex:1;min-height:0;display:flex;flex-direction:column}
 .card h2{font-size:16px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px}
@@ -80,6 +80,14 @@ tbody td{padding:8px 8px;font-size:13px;text-align:center;border-bottom:1px soli
 #sec-classes .card > h2{flex-shrink:0;margin-bottom:14px}
 #sec-classes .summary-bar{flex-shrink:0}
 #sec-classes #classGroupsContainer{flex:1;min-height:0;overflow:auto;padding-right:4px}
+/* 课程表预览 / 班级排课进度：与其他页签卡片高度一致 */
+#sec-schedule .card{display:flex;flex-direction:column;height:calc(100vh - 180px)}
+#sec-schedule .card > h2{flex-shrink:0;margin-bottom:14px}
+#sec-schedule .sch-week-nav,#sec-schedule .sch-toolbar{flex-shrink:0}
+#sec-schedule .sch-columns{flex:1;min-height:0;overflow:auto;align-items:stretch}
+#sec-stats .card{display:flex;flex-direction:column;height:calc(100vh - 180px)}
+#sec-stats .card > h2{flex-shrink:0;margin-bottom:14px}
+#sec-stats #statsGroupsContainer{flex:1;min-height:0;overflow:auto;padding-right:4px}
 .stu-att-input{width:36px;padding:2px 1px;border:1px solid #cbd5e1;border-radius:4px;text-align:center;font-size:11px}
 .stu-att-input:focus{outline:none;border-color:#2563eb;background:#f0f7ff}
 .stu-att-input.changed{background:#fef3c7;border-color:#f59e0b}
