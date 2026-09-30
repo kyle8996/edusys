@@ -16,6 +16,11 @@ body{font-family:-apple-system,'Microsoft YaHei','PingFang SC',sans-serif;backgr
 .nav .tabs button{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:#fff;padding:7px 18px;border-radius:8px;cursor:pointer;font-size:13px;transition:.2s;white-space:nowrap}
 .nav .tabs button:hover,.nav .tabs button.active{background:rgba(255,255,255,.25);border-color:#fff}
 .card{background:#fff;border-radius:14px;box-shadow:0 2px 12px rgba(0,0,0,.06);margin:16px 24px;padding:20px 24px}
+/* 生日提醒：固定面板（与销售管理一致），日历填满视口 */
+#sec-birthday .card{position:fixed;top:64px;left:24px;right:24px;bottom:12px;display:flex;flex-direction:column;padding:14px 20px;overflow:hidden}
+#sec-birthday .card h2,#sec-birthday .bday-nav,#sec-birthday .bday-legend{flex-shrink:0}
+#birthdayContainer{flex:1;min-height:0;display:flex;flex-direction:column}
+@media(max-width:768px){#sec-birthday .card{position:static;margin:10px;height:auto;overflow:visible}}
 .card h2{font-size:16px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px}
 .toolbar{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center}
 .toolbar select,.toolbar input[type=number]{padding:7px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;background:#fff}
@@ -335,7 +340,7 @@ tr.drag-over-bottom td{box-shadow:inset 0 -3px 0 0 #3b82f6}
       <button class="btn btn-sm" style="margin-left:6px;font-size:10px" onclick="bdayReset()">本月</button>
     </div>
     <div class="bday-legend" style="margin:10px 0 4px;font-size:12px;color:#64748b">
-      <span style="display:inline-block;margin-right:14px"><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#fff7ed;border:1px solid #fdba74;vertical-align:middle;margin-right:4px"></i>有学员生日</span>
+      <span style="display:inline-block;margin-right:14px"><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#fffbeb;border:1px solid #fbbf24;vertical-align:middle;margin-right:4px"></i>有学员生日</span>
       <span style="display:inline-block;margin-right:14px"><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#eff6ff;border:1px solid #93c5fd;vertical-align:middle;margin-right:4px"></i>今天</span>
       <span>共 <b id="bdayTotalCount" style="color:#ea580c">0</b> 名学员已登记出生日期</span>
     </div>
@@ -704,6 +709,23 @@ function bdayShift(delta) {
 }
 function bdayReset() { _bdayMonth = new Date().getMonth(); renderBirthdays(); }
 
+// 生日徽章糖果配色：按姓名稳定取色，同一孩子颜色固定
+function bdayChipColor(name) {
+  const palette = [
+    { bg: '#ffe4e6', fg: '#be123c', bd: '#fda4af' },  // 草莓粉
+    { bg: '#ffedd5', fg: '#c2410c', bd: '#fdba74' },  // 橙子
+    { bg: '#fef9c3', fg: '#a16207', bd: '#fde047' },  // 柠檬黄
+    { bg: '#dcfce7', fg: '#15803d', bd: '#86efac' },  // 青苹果
+    { bg: '#cffafe', fg: '#0e7490', bd: '#67e8f9' },  // 天空蓝
+    { bg: '#e0e7ff', fg: '#4338ca', bd: '#a5b4fc' },  // 葡萄紫
+    { bg: '#fce7f3', fg: '#be185d', bd: '#f9a8d4' },  // 桃桃粉
+    { bg: '#d9f99d', fg: '#4d7c0f', bd: '#bef264' }   // 抹茶绿
+  ];
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return palette[h % palette.length];
+}
+
 function renderBirthdays() {
   const container = document.getElementById('birthdayContainer');
   if (!container) return;
@@ -757,30 +779,33 @@ function renderBirthdays() {
   const todayDay = today.getDate();
 
   const weekHeads = ['日', '一', '二', '三', '四', '五', '六'];
-  let html = '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px">';
+  let html = '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;flex-shrink:0">';
   weekHeads.forEach(w => {
     html += '<div style="text-align:center;font-size:12px;font-weight:700;color:#64748b;padding:4px 0">' + w + '</div>';
   });
+  html += '</div>';
 
   const totalCells = Math.ceil((startOffset + daysInMonth) / 7) * 7;
+  html += '<div style="flex:1;min-height:0;display:grid;grid-template-columns:repeat(7,1fr);grid-auto-rows:1fr;gap:6px;margin-top:4px">';
   for (let i = 0; i < totalCells; i++) {
     const dayNum = i - startOffset + 1;
     if (dayNum < 1 || dayNum > daysInMonth) {
-      html += '<div style="min-height:78px;border:1px solid #f1f5f9;border-radius:8px;background:#fafafa"></div>';
+      html += '<div style="border:1px solid #f1f5f9;border-radius:10px;background:#fafafa"></div>';
       continue;
     }
     const list = byDay[dayNum] || [];
     const hasBday = list.length > 0;
     const isToday = isThisMonth && dayNum === todayDay;
     let bg = '#fff', border = '#e2e8f0';
-    if (hasBday) { bg = '#fff7ed'; border = '#fdba74'; }
+    if (hasBday) { bg = '#fffbeb'; border = '#fbbf24'; }
     if (isToday) { bg = '#eff6ff'; border = '#93c5fd'; }
-    let cell = '<div style="min-height:78px;border:1px solid ' + border + ';border-radius:8px;background:' + bg + ';padding:6px;position:relative">';
+    let cell = '<div style="border:1.5px solid ' + border + ';border-radius:10px;background:' + bg + ';padding:6px;position:relative;min-height:0;overflow-y:auto">';
     cell += '<div style="font-size:13px;font-weight:700;color:#475569;position:absolute;top:5px;right:7px">' + dayNum + '</div>';
     if (hasBday) {
-      cell += '<div style="margin-top:18px">';
+      cell += '<div style="margin-top:20px;display:flex;flex-direction:column;gap:4px">';
       list.forEach(k => {
-        cell += '<div style="font-size:12px;line-height:1.5;color:#9a3412;font-weight:600">🎂 ' + (k.name || '') + (k.className ? ' <span style="font-weight:400;color:#b45309;font-size:11px">(' + k.className + ')</span>' : '') + '</div>';
+        const cc = bdayChipColor(k.name || '');
+        cell += '<div style="font-size:12px;line-height:1.4;font-weight:700;background:' + cc.bg + ';color:' + cc.fg + ';border:1px solid ' + cc.bd + ';border-radius:999px;padding:2px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;align-self:flex-start;max-width:100%">🎂 ' + (k.name || '') + (k.className ? ' <span style="font-weight:500;font-size:10px;opacity:.85">' + k.className + '</span>' : '') + '</div>';
       });
       cell += '</div>';
     }
