@@ -208,6 +208,7 @@ tr.drag-over-bottom td{box-shadow:inset 0 -3px 0 0 #3b82f6}
     <button onclick="switchTab('students')">学员出勤</button>
     <button onclick="switchTab('stats')">班级排课</button>
     <button onclick="switchTab('schedule')">课程表预览</button>
+    <button onclick="switchTab('birthday')">🎂 生日提醒</button>
   </div>
 </div>
 
@@ -321,6 +322,27 @@ tr.drag-over-bottom td{box-shadow:inset 0 -3px 0 0 #3b82f6}
   </div>
 </div>
 
+<!-- Tab 5: 每月生日提醒 -->
+<div class="section" id="sec-birthday">
+  <div class="card">
+    <h2>🎂 每月生日提醒
+      <span style="margin-left:auto;font-size:13px;color:#ea580c;font-weight:600" id="bdayMonthCount"></span>
+      <button class="btn btn-gray btn-sm" onclick="exportBirthdays()" style="margin-left:10px">📥 导出当月</button></h2>
+    <div class="bday-nav">
+      <button class="btn btn-sm" onclick="bdayShift(-1)">◀ 上一月</button>
+      <b id="bdayMonthLabel" style="font-size:16px"></b>
+      <button class="btn btn-sm" onclick="bdayShift(1)">下一月 ▶</button>
+      <button class="btn btn-sm" style="margin-left:6px;font-size:10px" onclick="bdayReset()">本月</button>
+    </div>
+    <div class="bday-legend" style="margin:10px 0 4px;font-size:12px;color:#64748b">
+      <span style="display:inline-block;margin-right:14px"><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#fff7ed;border:1px solid #fdba74;vertical-align:middle;margin-right:4px"></i>有学员生日</span>
+      <span style="display:inline-block;margin-right:14px"><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#eff6ff;border:1px solid #93c5fd;vertical-align:middle;margin-right:4px"></i>今天</span>
+      <span>共 <b id="bdayTotalCount" style="color:#ea580c">0</b> 名学员已登记出生日期</span>
+    </div>
+    <div id="birthdayContainer"></div>
+  </div>
+</div>
+
 <!-- 弹窗：编辑排课 -->
 <div class="modal-overlay" id="schEditorModal">
   <div class="modal" style="max-width:800px;max-height:85vh;overflow-y:auto">
@@ -362,6 +384,7 @@ tr.drag-over-bottom td{box-shadow:inset 0 -3px 0 0 #3b82f6}
     <div class="form-group"><label>家长手机</label><input type="tel" id="stuPhone" placeholder="例如：13800008888"></div>
     <div class="form-group"><label>缴费课时数</label><input type="number" id="stuPaid" value="0" min="0"></div>
     <div class="form-group"><label>学员状态</label><select id="stuStatus"><option value="在读">在读</option><option value="毕业">毕业</option></select></div>
+    <div class="form-group"><label>出生日期</label><input type="date" id="stuBirth" placeholder="用于生日提醒"></div>
     <div class="form-actions"><button class="btn btn-gray" onclick="closeStudentModal()">取消</button><button class="btn btn-primary" onclick="saveStudent()">保存</button></div>
   </div>
 </div>
@@ -650,14 +673,122 @@ function getSortedClasses() {
 function switchTab(tab) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.tabs button').forEach(b => b.classList.remove('active'));
-  const map = {classes:'sec-classes',students:'sec-students',stats:'sec-stats',schedule:'sec-schedule'};
-  const idx = {classes:0,students:1,stats:2,schedule:3};
+  const map = {classes:'sec-classes',students:'sec-students',stats:'sec-stats',schedule:'sec-schedule',birthday:'sec-birthday'};
+  const idx = {classes:0,students:1,stats:2,schedule:3,birthday:4};
   document.getElementById(map[tab]).classList.add('active');
   document.querySelectorAll('.tabs button')[idx[tab]].classList.add('active');
   if (tab==='classes') renderClasses();
   if (tab==='students') { fillStuClassFilter(); renderStudents(); }
   if (tab==='stats') renderClassProgress();
   if (tab==='schedule') renderSchedule();
+  if (tab==='birthday') renderBirthdays();
+}
+
+// ═══════════════════════════════════════
+// Tab 5: 每月生日提醒（月历形式）
+// ═══════════════════════════════════════
+const _MONTH_NAMES = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+let _bdayMonth = (new Date().getMonth()); // 0-based，默认本月
+
+// 解析出生日期字符串（兼容 2026-09-29 与 2026-09-29T00:00:00 格式），返回 {y,m,d} 或 null
+function parseBirthDate(str) {
+  if (!str) return null;
+  const parts = ('' + str).split('T')[0].split('-').map(Number);
+  if (parts.length < 3 || !parts[0] || !parts[1] || !parts[2]) return null;
+  return { y: parts[0], m: parts[1], d: parts[2] };
+}
+
+function bdayShift(delta) {
+  _bdayMonth = Math.max(0, Math.min(11, _bdayMonth + delta));
+  renderBirthdays();
+}
+function bdayReset() { _bdayMonth = new Date().getMonth(); renderBirthdays(); }
+
+function renderBirthdays() {
+  const container = document.getElementById('birthdayContainer');
+  if (!container) return;
+  const m = _bdayMonth;            // 0-based
+  const year = new Date().getFullYear();
+
+  // 按「日」归类：day -> [{name, className}]
+  const byDay = {};
+  let totalWithBirth = 0;
+  const classMap = {};
+  _classes.forEach(c => { classMap[c.id] = c.name; });
+  _students.forEach(s => {
+    if (s.birth_date) totalWithBirth++;
+    const bd = parseBirthDate(s.birth_date);
+    if (!bd || bd.m !== m + 1) return;
+    const day = bd.d;
+    (byDay[day] = byDay[day] || []).push({ name: s.name, className: classMap[s.class_id] || '' });
+  });
+
+  const monthCount = Object.values(byDay).reduce((a, arr) => a + arr.length, 0);
+  document.getElementById('bdayMonthLabel').textContent = year + '年 ' + _MONTH_NAMES[m];
+  const mc = document.getElementById('bdayMonthCount');
+  if (mc) mc.textContent = '本月 ' + monthCount + ' 位学员过生日 🎂';
+  const tc = document.getElementById('bdayTotalCount');
+  if (tc) tc.textContent = totalWithBirth;
+
+  const first = new Date(year, m, 1);
+  const startOffset = first.getDay();           // 0=周日
+  const daysInMonth = new Date(year, m + 1, 0).getDate();
+  const today = new Date();
+  const isThisMonth = today.getFullYear() === year && today.getMonth() === m;
+  const todayDay = today.getDate();
+
+  const weekHeads = ['日', '一', '二', '三', '四', '五', '六'];
+  let html = '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px">';
+  weekHeads.forEach(w => {
+    html += '<div style="text-align:center;font-size:12px;font-weight:700;color:#64748b;padding:4px 0">' + w + '</div>';
+  });
+
+  const totalCells = Math.ceil((startOffset + daysInMonth) / 7) * 7;
+  for (let i = 0; i < totalCells; i++) {
+    const dayNum = i - startOffset + 1;
+    if (dayNum < 1 || dayNum > daysInMonth) {
+      html += '<div style="min-height:78px;border:1px solid #f1f5f9;border-radius:8px;background:#fafafa"></div>';
+      continue;
+    }
+    const list = byDay[dayNum] || [];
+    const hasBday = list.length > 0;
+    const isToday = isThisMonth && dayNum === todayDay;
+    let bg = '#fff', border = '#e2e8f0';
+    if (hasBday) { bg = '#fff7ed'; border = '#fdba74'; }
+    if (isToday) { bg = '#eff6ff'; border = '#93c5fd'; }
+    let cell = '<div style="min-height:78px;border:1px solid ' + border + ';border-radius:8px;background:' + bg + ';padding:6px;position:relative">';
+    cell += '<div style="font-size:13px;font-weight:700;color:#475569;position:absolute;top:5px;right:7px">' + dayNum + '</div>';
+    if (hasBday) {
+      cell += '<div style="margin-top:18px">';
+      list.forEach(k => {
+        cell += '<div style="font-size:12px;line-height:1.5;color:#9a3412;font-weight:600">🎂 ' + (k.name || '') + (k.className ? ' <span style="font-weight:400;color:#b45309;font-size:11px">(' + k.className + ')</span>' : '') + '</div>';
+      });
+      cell += '</div>';
+    }
+    cell += '</div>';
+    html += cell;
+  }
+  html += '</div>';
+  if (monthCount === 0) {
+    html += '<p style="font-size:13px;color:#94a3b8;text-align:center;margin-top:16px">本月暂无已登记出生日期的学员 🎈</p>';
+  }
+  container.innerHTML = html;
+}
+
+function exportBirthdays() {
+  const m = _bdayMonth + 1;
+  const byDay = {};
+  const classMap = {};
+  _classes.forEach(c => { classMap[c.id] = c.name; });
+  _students.forEach(s => {
+    const bd = parseBirthDate(s.birth_date);
+    if (!bd || bd.m !== m) return;
+    (byDay[bd.d] = byDay[bd.d] || []).push((s.name || '') + (classMap[s.class_id] ? '（' + classMap[s.class_id] + '）' : ''));
+  });
+  const days = Object.keys(byDay).map(Number).sort((a, b) => a - b);
+  const headers = ['日期', _MONTH_NAMES[m - 1] + '生日学员'];
+  const rows = days.map(d => [m + '月' + d + '日', byDay[d].join('、')]);
+  exportCSV(headers, rows, '生日提醒_' + (m < 10 ? '0' + m : m) + '月_' + new Date().toISOString().slice(0, 10) + '.csv');
 }
 
 // 生成汇总卡片悬浮提示（已毕业学员/已毕业班级等）
@@ -1413,12 +1544,14 @@ function openStudentModal(sid) {
       document.getElementById('stuPhone').value = s.phone || '';
       document.getElementById('stuPaid').value = s.paid_hours || 0;
       document.getElementById('stuStatus').value = s.status || '在读';
+      document.getElementById('stuBirth').value = s.birth_date ? ('' + s.birth_date).split('T')[0] : '';
     }
   } else {
     document.getElementById('stuName').value = '';
     document.getElementById('stuPhone').value = '';
     document.getElementById('stuPaid').value = 0;
     document.getElementById('stuStatus').value = '在读';
+    document.getElementById('stuBirth').value = '';
   }
   document.getElementById('stuModal').classList.add('show');
 }
@@ -1437,6 +1570,9 @@ async function saveStudent() {
     paid_hours: parseFloat(document.getElementById('stuPaid').value) || 0,
     status: document.getElementById('stuStatus').value
   };
+  // 出生日期仅在非空时写入，避免 birth_date 字段尚未创建时报错
+  const bd = document.getElementById('stuBirth').value.trim();
+  if (bd) data.birth_date = bd;
   if (editId) {
     // 修复 Bug #1: 编辑时不覆写 remaining_hours，由 calcRemaining() 动态计算
     const { error } = await sb.from('students').update(data).eq('id', parseInt(editId));
