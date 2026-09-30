@@ -712,20 +712,34 @@ function renderBirthdays() {
   // 已退费学员名单（refunds 表以 student_name 标识）
   const refundedNames = new Set((_refunds || []).map(r => (r.student_name || '').trim()).filter(Boolean));
 
-  // 按「日」归类：day -> [{name, className}]
-  const byDay = {};
-  let totalWithBirth = 0;
+  // 去重：同一孩子可能有多条就读记录（如常规班 + 暑假班），按「电话+姓名」合并，避免生日重复显示
   const classMap = {};
   _classes.forEach(c => { classMap[c.id] = c.name; });
+  const seenChildren = new Map();
+  const bdayChildren = [];
   _students.forEach(s => {
     const nm = (s.name || '').trim();
     // 毕业 / 退费学员不计入生日提醒
     if (s.status === '毕业' || refundedNames.has(nm)) return;
-    if (s.birth_date) totalWithBirth++;
-    const bd = parseBirthDate(s.birth_date);
+    if (!s.birth_date) return;
+    const key = (s.phone || '') + '|' + nm;
+    let child = seenChildren.get(key);
+    if (!child) {
+      child = { name: s.name, birth_date: s.birth_date, classes: [] };
+      seenChildren.set(key, child);
+      bdayChildren.push(child);
+    }
+    const cn = classMap[s.class_id] || '';
+    if (cn && !child.classes.includes(cn)) child.classes.push(cn);
+  });
+  const totalWithBirth = bdayChildren.length;
+
+  // 按「日」归类：day -> [{name, className}]
+  const byDay = {};
+  bdayChildren.forEach(c => {
+    const bd = parseBirthDate(c.birth_date);
     if (!bd || bd.m !== m + 1) return;
-    const day = bd.d;
-    (byDay[day] = byDay[day] || []).push({ name: s.name, className: classMap[s.class_id] || '' });
+    (byDay[bd.d] = byDay[bd.d] || []).push({ name: c.name, className: c.classes.join('、') });
   });
 
   const monthCount = Object.values(byDay).reduce((a, arr) => a + arr.length, 0);
@@ -786,13 +800,19 @@ function exportBirthdays() {
   const classMap = {};
   const refundedNames = new Set((_refunds || []).map(r => (r.student_name || '').trim()).filter(Boolean));
   _classes.forEach(c => { classMap[c.id] = c.name; });
+  const seenExp = new Map();
   _students.forEach(s => {
     const nm = (s.name || '').trim();
     // 毕业 / 退费学员不计入生日提醒
     if (s.status === '毕业' || refundedNames.has(nm)) return;
     const bd = parseBirthDate(s.birth_date);
     if (!bd || bd.m !== m) return;
-    (byDay[bd.d] = byDay[bd.d] || []).push((s.name || '') + (classMap[s.class_id] ? '（' + classMap[s.class_id] + '）' : ''));
+    // 同一孩子可能有多条就读记录（常规班+暑假班），按「电话+姓名」去重，只导出一次
+    const key = (s.phone || '') + '|' + nm;
+    if (seenExp.has(key)) return;
+    seenExp.set(key, true);
+    const cn = classMap[s.class_id] || '';
+    (byDay[bd.d] = byDay[bd.d] || []).push((s.name || '') + (cn ? '（' + cn + '）' : ''));
   });
   const days = Object.keys(byDay).map(Number).sort((a, b) => a - b);
   const headers = ['日期', _MONTH_NAMES[m - 1] + '生日学员'];
