@@ -16,11 +16,10 @@ body{font-family:-apple-system,'Microsoft YaHei','PingFang SC',sans-serif;backgr
 .nav .tabs button{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:#fff;padding:7px 18px;border-radius:8px;cursor:pointer;font-size:13px;transition:.2s;white-space:nowrap}
 .nav .tabs button:hover,.nav .tabs button.active{background:rgba(255,255,255,.25);border-color:#fff}
 .card{background:#fff;border-radius:14px;box-shadow:0 2px 12px rgba(0,0,0,.06);margin:16px 24px;padding:20px 24px}
-/* 生日提醒：固定面板（与销售管理一致），日历填满视口 */
-#sec-birthday .card{position:fixed;top:64px;left:24px;right:24px;bottom:12px;display:flex;flex-direction:column;padding:14px 20px;overflow:hidden}
+/* 生日提醒：与课程表预览等页签一致的文档流布局，卡片高度锁定一屏，日历撑满卡片 */
+#sec-birthday .card{display:flex;flex-direction:column;height:calc(100vh - 175px);padding:14px 20px;overflow:hidden;margin-top:14px}
 #sec-birthday .card h2,#sec-birthday .bday-nav,#sec-birthday .bday-legend{flex-shrink:0}
 #birthdayContainer{flex:1;min-height:0;display:flex;flex-direction:column}
-@media(max-width:768px){#sec-birthday .card{position:static;margin:10px;height:auto;overflow:visible}}
 .card h2{font-size:16px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px}
 .toolbar{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center}
 .toolbar select,.toolbar input[type=number]{padding:7px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;background:#fff}
