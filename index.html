@@ -148,11 +148,10 @@ tr.drag-over-bottom td{box-shadow:inset 0 -3px 0 0 #3b82f6}
 .sch-grid thead th{background:#f8fafc;padding:3px 2px;font-size:10px;color:#475569;font-weight:600;text-align:center;position:sticky;top:0;z-index:2}
 .sch-grid thead th.day-hd{font-size:11px;background:#f1f5f9;color:#1e293b}
 .sch-cell{position:relative;padding:0!important;height:20px}
-/* 今天列高亮：表头 + 单元格 + 课程块 */
-.sch-grid thead th.sch-today{background:#dbeafe;color:#1d4ed8;box-shadow:inset 0 3px 0 #2563eb,inset 3px 0 0 #2563eb,inset -3px 0 0 #2563eb}
-.sch-grid td.sch-today{background:#eff6ff;border-left:2.5px solid #2563eb;border-right:2.5px solid #2563eb}
-.sch-grid tr:last-child td.sch-today{border-bottom:2.5px solid #2563eb}
-.sch-grid td.sch-today .sch-block{box-shadow:0 0 0 2px rgba(37,99,235,.4)}
+/* 今天列高亮：浅粉底色，无边框 */
+.sch-grid thead th.sch-today{background:#fbcfe8;color:#be185d}
+.sch-grid td.sch-today{background:#fdf2f8}
+.sch-grid td.sch-today .sch-block{}
 .sch-block{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1px 3px;border-radius:4px;font-size:9.5px;font-weight:600;cursor:pointer;transition:.15s;line-height:1.2;white-space:nowrap;height:100%;box-sizing:border-box;margin:0 1px}
 .sch-block:hover{box-shadow:0 2px 10px rgba(0,0,0,.18);z-index:10}
 .sch-k1{background:linear-gradient(135deg,#dbeafe,#bfdbfe);color:#1e40af;border:1px solid #93c5fd}
@@ -2875,7 +2874,7 @@ function renderSchColumn(teacher, tData, avatarColor, classCount, lessonCount, w
     const dt = new Date(ws); dt.setDate(dt.getDate() + d);
     const isToday = d === todayDow;
     h += '<th class="day-hd' + (isToday ? ' sch-today' : '') + '">' + DAY_NAMES[d] +
-      '<br><span style="font-weight:' + (isToday ? '700' : '400') + ';font-size:10px;color:' + (isToday ? '#1d4ed8' : '#94a3b8') + '">' +
+      '<br><span style="font-weight:' + (isToday ? '700' : '400') + ';font-size:10px;color:' + (isToday ? '#be185d' : '#94a3b8') + '">' +
       (dt.getMonth()+1) + '/' + dt.getDate() + (isToday ? ' ← 今天' : '') + '</span></th>';
   }
   h += '</tr></thead><tbody>';
