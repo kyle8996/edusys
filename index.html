@@ -348,7 +348,7 @@ tr.drag-over-bottom td{box-shadow:inset 0 -3px 0 0 #3b82f6}
     </div>
     <div class="bday-legend" style="margin:10px 0 4px;font-size:12px;color:#64748b">
       <span style="display:inline-block;margin-right:14px"><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#fffbeb;border:1px solid #fbbf24;vertical-align:middle;margin-right:4px"></i>有学员生日</span>
-      <span style="display:inline-block;margin-right:14px"><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#eff6ff;border:1px solid #93c5fd;vertical-align:middle;margin-right:4px"></i>今天</span>
+      <span style="display:inline-block;margin-right:14px"><i style="display:inline-block;width:12px;height:12px;border-radius:3px;background:#dbeafe;border:2px solid #2563eb;vertical-align:middle;margin-right:4px"></i>今天</span>
       <span>共 <b id="bdayTotalCount" style="color:#ea580c">0</b> 名学员已登记出生日期</span>
     </div>
     <div id="birthdayContainer"></div>
@@ -895,14 +895,14 @@ function renderBirthdays() {
     const list = byDay[dayNum] || [];
     const hasBday = list.length > 0;
     const isToday = isThisMonth && dayNum === todayDay;
-    let bg = '#fff', border = '#e2e8f0';
+    let bg = '#fff', border = '#e2e8f0', bw = 1.5, extra = '';
     if (hasBday) { bg = '#fffbeb'; border = '#fbbf24'; }
-    if (isToday) { bg = '#eff6ff'; border = '#93c5fd'; }
-    let cell = '<div style="border:1.5px solid ' + border + ';border-radius:10px;background:' + bg + ';padding:6px;position:relative;min-height:0;overflow-y:auto">';
+    if (isToday) { bg = '#dbeafe'; border = '#2563eb'; bw = 2.5; extra = 'box-shadow:0 0 0 3px rgba(37,99,235,.18);'; }
+    let cell = '<div style="border:' + bw + 'px solid ' + border + ';border-radius:10px;background:' + bg + ';padding:6px;position:relative;min-height:0;overflow-y:auto;' + extra + '">';
     const lunarStr = getLunarDateCN(year, m + 1, dayNum);
     cell += '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">';
     cell += '<span style="font-size:10px;color:#a78bfa;font-weight:600;line-height:1.3">' + lunarStr + '</span>';
-    cell += '<span style="font-size:13px;font-weight:700;color:#475569">' + dayNum + '</span>';
+    cell += '<span style="display:flex;align-items:center;gap:4px">' + (isToday ? '<span style="font-size:10px;font-weight:800;background:#2563eb;color:#fff;border-radius:999px;padding:1px 7px;letter-spacing:1px">今天</span>' : '') + '<span style="font-size:' + (isToday ? '15px' : '13px') + ';font-weight:700;color:' + (isToday ? '#1d4ed8' : '#475569') + '">' + dayNum + '</span></span>';
     cell += '</div>';
     if (hasBday) {
       cell += '<div style="display:flex;flex-direction:column;gap:4px">';
