@@ -1112,7 +1112,6 @@ function renderClasses() {
       '<td><b>' + teacher + '</b></td>' +
       '<td>' + (c.freq||0) + ' 节/月</td>' +
       '<td><b>' + (c.total_hours||0) + '</b></td>' +
-      '<td>' + (c.before_hours||0) + '</td>' +
       '<td>' + (countMap[c.id]||0) + ' 人</td>' +
       '<td>' +
       (isGraduated
@@ -1137,7 +1136,7 @@ function renderClasses() {
       html += '<div class="tbl"><table><thead><tr>' +
         '<th style="width:28px">⋮</th><th style="width:40px">序号</th><th style="text-align:left;width:140px">班级名称</th><th style="width:60px">阶段</th><th style="width:70px">带班老师</th>' +
         '<th style="width:80px">排课频率</th><th style="width:80px">阶段总课时</th>' +
-        '<th style="width:80px">年前已上</th><th style="width:100px">学员数</th>' +
+        '<th style="width:100px">学员数</th>' +
         '<th style="width:120px">操作</th>' +
         '</tr></thead><tbody class="classTbody" id="classTbody-' + g.key + '">';
       list.forEach((c, idx) => { html += rowHtml(c, idx); });
@@ -2080,7 +2079,7 @@ function renderClassProgress() {
   }
 
   const theadCells =
-    '<th style="width:40px">序号</th><th style="text-align:left">班级</th><th>年前已上</th>' +
+    '<th style="width:40px">序号</th><th style="text-align:left">班级</th>' +
     months.map(m => '<th>' + m + '月排课</th>').join('') +
     '<th>累计已上</th><th>阶段总课时</th><th>班级剩余课时</th><th>进度</th><th>状态</th>';
 
@@ -2142,7 +2141,6 @@ function renderClassProgress() {
       html += '<tr draggable="true" data-cid="' + c.id + '" data-group="' + g.key + '"' + rowStyle + '>' +
         '<td>' + (idx + 1) + '</td>' +
         '<td style="text-align:left;font-weight:600"><span class="drag-hint">⋮⋮</span> ' + c.name + (isGraduated ? ' <span style="display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;background:#f3e8ff;color:#9333ea;font-weight:600">已毕业</span>' : '') + '</td>' +
-        '<td><input type="number" value="' + before + '" data-cid="' + c.id + '" data-field="before_hours" style="width:60px;text-align:center"></td>' +
         months.map((m, i) => '<td><input type="number" value="' + (c[mkeys[i]]||0) + '" data-cid="' + c.id + '" data-field="' + mkeys[i] + '" style="width:60px;text-align:center"></td>').join('') +
         '<td><b>' + cumulative + '</b></td>' +
         '<td><b>' + totalHours + '</b></td>' +
@@ -2454,7 +2452,7 @@ function exportClasses() {
   groupDefs.forEach(g => groups[g.key] = []);
   visibleClasses.forEach(c => groups[classifyClass(c)].push(c));
 
-  const headers = ['序号', '班级名称', '阶段', '带班老师', '排课频率', '阶段总课时', '年前已上', '学员数'];
+  const headers = ['序号', '班级名称', '阶段', '带班老师', '排课频率', '阶段总课时', '学员数'];
   const rows = [];
   groupDefs.forEach(g => {
     const list = groups[g.key];
@@ -2475,7 +2473,6 @@ function exportClasses() {
         teacher,
         (c.freq || 0) + ' 节/月',
         (c.total_hours || 0) + '',
-        (c.before_hours || 0) + '',
         (countMap[c.id] || 0) + ' 人'
       ]);
     });
@@ -2574,7 +2571,7 @@ function exportStats() {
     months.push(m);
     mkeys.push('m' + m);
   }
-  const headers = ['序号', '班级', '年前已上'].concat(months.map(m => m + '月排课')).concat(['累计已上', '阶段总课时', '班级剩余课时', '进度', '状态']);
+  const headers = ['序号', '班级'].concat(months.map(m => m + '月排课')).concat(['累计已上', '阶段总课时', '班级剩余课时', '进度', '状态']);
 
   const sortedClasses = [..._classes].sort((a,b) => (a.sort_order||0) - (b.sort_order||0));
   const visibleClasses = sortedClasses.filter(c => !(c.status === '已毕业' && !showGrad));
@@ -2617,7 +2614,6 @@ function exportStats() {
       rows.push([
         (idx + 1) + '',
         nameCell,
-        before + '',
         ...mkeys.map(k => (c[k] || 0) + ''),
         cumulative + '',
         totalHours + '',
