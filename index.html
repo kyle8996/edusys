@@ -2504,9 +2504,6 @@ function exportStudents() {
     sortedClassIds.forEach(cid => {
       const cname = classMap[parseInt(cid)] || '无班级';
       const cstudents = groups[cid];
-      const hdr = headers.map(() => '');
-      hdr[2] = cname + '（当前班级人数：' + cstudents.length + '人）';
-      rows.push(hdr);
       cstudents.sort((a,b) => (a.sort_order||0) - (b.sort_order||0)).forEach(s => {
         seq++;
         const rem = calcRemaining(s.id);
@@ -2516,7 +2513,7 @@ function exportStudents() {
         rows.push([
           seq + '',
           s.name,
-          cname,
+          cname + '（' + cstudents.length + '人）',
           s.phone || '',
           consumed.toFixed(1),
           (s.paid_hours||0) + '',
