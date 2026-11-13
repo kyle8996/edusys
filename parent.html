@@ -17,15 +17,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 .card{background:#fff;border-radius:12px;padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
 .card-title{font-size:14px;font-weight:600;color:#64748b;margin-bottom:10px}
 .search-box{display:flex;gap:8px;margin-bottom:8px}
-.search-box input{flex:1;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;outline:none}
+.search-box input{flex:1;min-width:0;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;outline:none}
 .search-box input:focus{border-color:#f59e0b}
-.search-box button{padding:10px 16px;background:#f59e0b;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer}
+.search-box button{padding:10px 16px;background:#f59e0b;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap}
 .search-box button:active{opacity:.9}
 .result-list{margin-top:8px}
 .result-item{padding:10px 12px;background:#f8fafc;border-radius:8px;margin-bottom:6px;cursor:pointer;display:flex;justify-content:space-between;align-items:center}
 .result-item:hover{background:#f1f5f9}
 .result-item .name{font-weight:600;color:#1e293b}
 .result-item .class-name{font-size:12px;color:#64748b}
+.hint{font-size:12px;color:#b45309;line-height:1.6;margin:2px 0 10px}
 
 /* 学员信息大卡片 */
 .student-header{display:flex;align-items:center;gap:12px;margin-bottom:16px}
@@ -63,12 +64,16 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 .month-table td:last-child{text-align:right;font-weight:600;color:#059669}
 .month-table tr:last-child td{border-bottom:none}
 
-.empty-state{text-align:center;padding:40px 20px;color:#94a3b8;font-size:14px}
+.empty-state{text-align:center;padding:40px 20px;color:#94a3b8;font-size:14px;line-height:1.7}
 .loading{text-align:center;padding:40px;color:#64748b}
 .back-btn{display:inline-block;padding:8px 16px;background:#f1f5f9;color:#475569;border-radius:8px;font-size:13px;text-decoration:none;margin-top:8px;cursor:pointer}
 .back-btn:hover{background:#e2e8f0}
 .refresh-btn{display:inline-block;padding:8px 16px;background:#3b82f6;color:#fff;border-radius:8px;font-size:13px;text-decoration:none;margin-top:8px;margin-left:8px;cursor:pointer}
 .refresh-btn:hover{background:#2563eb}
+.diag-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #f1f5f9;font-size:13px}
+.diag-row:last-child{border-bottom:none}
+.diag-row span{color:#64748b}
+.diag-row b{color:#1e293b}
 </style>
 </head>
 <body>
@@ -91,133 +96,235 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Ar
 // ═══════════════════════════════════════
 const SUPABASE_URL = 'https://chasxggorljjqqmficnh.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNoYXN4Z2dvcmxqanFxbWZpY25oIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MTUwMjU3MiwiZXhwIjoyMDk3MDc4NTcyfQ.j6B2y8ZUgsO7WGrv4Aypho4qiqDrwkJ5O0HxiQfvbjY';
-
-// 原生 fetch 请求 Supabase REST API
-function supabaseFetch(table, select) {
-  const url = SUPABASE_URL + '/rest/v1/' + table + '?select=' + encodeURIComponent(select);
-  return fetch(url, {
-    headers: {
-      'apikey': SUPABASE_KEY,
-      'Authorization': 'Bearer ' + SUPABASE_KEY,
-      'Accept': 'application/json'
-    }
-  }).then(function(r) {
-    if (!r.ok) return r.json().then(function(j) { throw new Error('HTTP ' + r.status + ': ' + JSON.stringify(j)); });
-    return r.json();
-  });
-}
+const PAGE_SIZE = 1000;          // Supabase REST 单次最多返回 1000 行，必须分页
+const BUILD_TAG = '2026-11-13'; // 版本标记，用于确认线上是否已更新
 
 let _students = [], _classes = [], _attendance = [], _leaves = [];
+let _loadError = '', _loadStats = {};
+
+// ── 通用工具 ──────────────────────────────
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function(c) {
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+// 姓名归一化：去掉所有空白（含全角空格）与常见分隔点，忽略大小写
+function normName(s) {
+  return String(s == null ? '' : s).replace(/[\s\u3000·・.．]/g, '').toLowerCase();
+}
+function digitsOnly(s) { return String(s == null ? '' : s).replace(/\D/g, ''); }
+// 手机号尾号：兼容数字类型、带空格/横线/+86，且输完整号码时自动取后4位
+function phoneTail(s) { return digitsOnly(s).slice(-4); }
+
+// ═══════════════════════════════════════
+// 数据加载：分页拉全量 + 超时 + 失败重试
+// ═══════════════════════════════════════
+async function fetchPage(table, offset) {
+  const url = SUPABASE_URL + '/rest/v1/' + table +
+    '?select=*&order=id&limit=' + PAGE_SIZE + '&offset=' + offset;
+  const ctrl = new AbortController();
+  const timer = setTimeout(function() { ctrl.abort(); }, 15000);
+  try {
+    const r = await fetch(url, {
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'Accept': 'application/json'
+      },
+      signal: ctrl.signal
+    });
+    if (!r.ok) {
+      let detail = '';
+      try { detail = JSON.stringify(await r.json()).slice(0, 120); } catch (e) {}
+      throw new Error('HTTP ' + r.status + ' ' + detail);
+    }
+    const data = await r.json();
+    if (!Array.isArray(data)) throw new Error('返回格式异常');
+    return data;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function fetchPageRetry(table, offset) {
+  let lastErr;
+  for (let i = 0; i < 2; i++) {
+    try { return await fetchPage(table, offset); }
+    catch (e) {
+      lastErr = e;
+      if (i === 0) await new Promise(function(r) { setTimeout(r, 500); });
+    }
+  }
+  throw lastErr;
+}
+
+async function fetchAll(table) {
+  let all = [], offset = 0;
+  for (let page = 0; page < 20; page++) {
+    const rows = await fetchPageRetry(table, offset);
+    all = all.concat(rows);
+    if (rows.length < PAGE_SIZE) return all;   // 不足一页 = 已取完
+    offset += PAGE_SIZE;
+  }
+  throw new Error(table + ' 数据量超出预期（超过20页）');
+}
+
+async function loadData() {
+  _loadError = '';
+  const t0 = Date.now();
+  try {
+    // 统一用原生 fetch，避免依赖外部 SDK（历史版本曾因 SDK 加载失败白屏）
+    const [s1, s2, s3, s4] = await Promise.all([
+      fetchAll('students'),
+      fetchAll('classes'),
+      fetchAll('attendance'),
+      fetchAll('leaves')
+    ]);
+    if (!s1.length) throw new Error('学员数据为空');
+    _students = s1; _classes = s2; _attendance = s3; _leaves = s4;
+    _loadStats = {
+      students: s1.length, classes: s2.length,
+      attendance: s3.length, leaves: s4.length,
+      ms: Date.now() - t0
+    };
+    return true;
+  } catch (e) {
+    _loadError = (e && e.message) ? e.message : '网络异常';
+    return false;
+  }
+}
 
 // ═══════════════════════════════════════
 // 页面初始化
 // ═══════════════════════════════════════
 async function init() {
   const params = new URLSearchParams(location.search);
-  const studentId = params.get('studentId');
-  const name = params.get('name');
-
-  await loadData();
-
-  if (studentId) {
-    showStudent(parseInt(studentId));
-  } else if (name) {
-    searchByName(name);
+  if (params.get('diag') === '1') { await showDiag(); return; }
+  const ok = await loadData();
+  // 加载失败时不再显示搜索框（避免把"没加载到数据"误报成"查不到学员"）
+  if (!ok) { showLoadError(); return; }
+  const sid = params.get('studentId');
+  if (sid && /^\d+$/.test(sid)) {
+    showStudent(parseInt(sid, 10));
   } else {
-    showSearch();
+    // 带 ?name= 的二维码：预填姓名并渲染搜索框，仍需手机尾号验证
+    showSearch(params.get('name') || '');
   }
 }
 
-async function loadData() {
-  try {
-    let s1, s2, s3;
-    if (typeof supabase !== 'undefined' && supabase.createClient) {
-      const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-      const [r1, r2, r3, r4] = await Promise.all([
-        sb.from('students').select('*'),
-        sb.from('classes').select('*'),
-        sb.from('attendance').select('*'),
-        sb.from('leaves').select('*')
-      ]);
-      if (r1.error || r2.error || r3.error) {
-        document.getElementById('app').innerHTML = '<div class="empty-state">数据加载异常：' + (r1.error?.message || r2.error?.message || r3.error?.message) + '</div>';
-        return;
-      }
-      s1 = r1.data; s2 = r2.data; s3 = r3.data; s4 = r4.data || [];
-    } else {
-      let s4;
-      [s1, s2, s3, s4] = await Promise.all([
-        supabaseFetch('students', '*'),
-        supabaseFetch('classes', '*'),
-        supabaseFetch('attendance', '*'),
-        supabaseFetch('leaves', '*')
-      ]);
-      _leaves = Array.isArray(s4) ? s4 : [];
-    }
-    _students = Array.isArray(s1) ? s1 : [];
-    _classes = Array.isArray(s2) ? s2 : [];
-    _attendance = Array.isArray(s3) ? s3 : [];
-    _leaves = Array.isArray(s4) ? s4 : [];
-  } catch (e) {
-    document.getElementById('app').innerHTML = '<div class="empty-state">数据加载失败：' + (e.message || '请检查网络') + '</div>';
+async function retryInit() {
+  document.getElementById('app').innerHTML = '<div class="loading">⏳ 重新加载中...</div>';
+  await init();
+}
+
+function pageHeader() {
+  return '<div class="header">' +
+    '<div class="logo">DK·邻里少儿英语</div>' +
+    '<div class="sub">在读学员课时查询</div>' +
+  '</div>';
+}
+
+function showLoadError() {
+  document.getElementById('app').innerHTML = pageHeader() +
+    '<div class="card">' +
+      '<div class="card-title">暂时无法查询</div>' +
+      '<div class="empty-state">数据加载失败，请检查网络后重试<br>' +
+        '<span style="font-size:12px;color:#cbd5e1">' + esc(_loadError) + '</span></div>' +
+      '<div style="text-align:center"><a class="refresh-btn" style="margin-left:0" onclick="retryInit()">重新加载</a></div>' +
+    '</div>';
+}
+
+// 自检页：仅显示统计数字，不含学员隐私信息。访问 parent.html?diag=1
+async function showDiag() {
+  document.getElementById('app').innerHTML = pageHeader() +
+    '<div class="card"><div class="loading">检测中...</div></div>';
+  const ok = await loadData();
+  let h = pageHeader() + '<div class="card"><div class="card-title">系统自检（不含学员信息）</div>';
+  h += '<div class="diag-row"><span>数据加载</span><b style="color:' +
+       (ok ? '#059669' : '#dc2626') + '">' + (ok ? '正常' : '失败：' + esc(_loadError)) + '</b></div>';
+  if (ok) {
+    h += '<div class="diag-row"><span>学员 / 班级</span><b>' + _loadStats.students + ' / ' + _loadStats.classes + '</b></div>';
+    h += '<div class="diag-row"><span>出勤记录</span><b>' + _loadStats.attendance + ' 条（完整）</b></div>';
+    h += '<div class="diag-row"><span>请假记录</span><b>' + _loadStats.leaves + ' 条（完整）</b></div>';
+    h += '<div class="diag-row"><span>加载耗时</span><b>' + _loadStats.ms + ' ms</b></div>';
   }
+  h += '<div class="diag-row"><span>页面版本</span><b>' + BUILD_TAG + '</b></div>';
+  h += '</div><div style="text-align:center;padding:10px 0 30px">' +
+       '<a class="back-btn" onclick="location.href=location.pathname">返回查询</a>' +
+       '<a class="refresh-btn" onclick="showDiag()">重新检测</a></div>';
+  document.getElementById('app').innerHTML = h;
 }
 
 async function refreshData(studentId) {
   const btn = document.querySelector('.refresh-btn');
   if (btn) { btn.textContent = '刷新中...'; btn.style.opacity = '0.7'; }
-  await loadData();
+  const ok = await loadData();
+  if (!ok) { showLoadError(); return; }
   showStudent(studentId);
 }
 
 // ═══════════════════════════════════════
 // 搜索页面
 // ═══════════════════════════════════════
-function showSearch() {
-  const app = document.getElementById('app');
-  app.innerHTML = '<div class="header">' +
-    '<div class="logo">DK·邻里少儿英语</div>' +
-    '<div class="sub">在读学员课时查询</div>' +
-  '</div>' +
+function showSearch(prefillName) {
+  document.getElementById('app').innerHTML = pageHeader() +
   '<div class="card">' +
     '<div class="card-title">请输入查询信息</div>' +
     '<div class="search-box" style="margin-bottom:10px">' +
-      '<input type="text" id="searchInput" placeholder="孩子姓名" onkeydown="if(event.key===\'Enter\')doSearch()">' +
+      '<input type="text" id="searchInput" placeholder="孩子姓名" value="' + esc(prefillName || '') +
+        '" autocomplete="off" onkeydown="if(event.key===\'Enter\')doSearch()">' +
     '</div>' +
     '<div class="search-box">' +
-      '<input type="text" id="phoneInput" placeholder="家长手机尾号4位" maxlength="4" onkeydown="if(event.key===\'Enter\')doSearch()">' +
+      '<input type="text" id="phoneInput" placeholder="手机号后4位（可输完整号码）" inputmode="numeric" ' +
+        'autocomplete="off" onkeydown="if(event.key===\'Enter\')doSearch()">' +
       '<button onclick="doSearch()">查询</button>' +
     '</div>' +
+    (prefillName ? '<div class="hint">已填入孩子姓名，请输入报名时登记的家长手机号后四位</div>' : '') +
     '<div id="searchResult" class="result-list"></div>' +
   '</div>';
 }
 
 function doSearch() {
   const name = document.getElementById('searchInput').value.trim();
-  const phoneTail = document.getElementById('phoneInput').value.trim();
+  const raw = document.getElementById('phoneInput').value;
+  const box = document.getElementById('searchResult');
   if (!name) {
-    document.getElementById('searchResult').innerHTML = '<div class="empty-state">请输入孩子姓名</div>';
+    box.innerHTML = '<div class="empty-state">请输入孩子姓名</div>';
     return;
   }
-  if (!phoneTail || phoneTail.length !== 4 || !/^\d{4}$/.test(phoneTail)) {
-    document.getElementById('searchResult').innerHTML = '<div class="empty-state">请输入家长手机尾号4位数字</div>';
+  const d = digitsOnly(raw);
+  if (d.length < 4) {
+    box.innerHTML = '<div class="empty-state">请输入家长手机号后4位数字<br>' +
+      '<span style="font-size:12px">也可以直接输入完整手机号</span></div>';
     return;
   }
-  searchByName(name, phoneTail);
+  searchByName(name, phoneTail(raw));
 }
 
-function searchByName(name, phoneTail) {
-  const list = _students.filter(function(s) {
-    return s.name && s.name.indexOf(name) !== -1 && s.phone && s.phone.slice(-4) === phoneTail;
-  });
+function searchByName(name, tail) {
+  // 兜底：若被调用时搜索框尚未渲染（例如外部直接调用），先渲染
+  if (!document.getElementById('searchResult')) showSearch(name);
+  const q = normName(name);
+  const nameMatches = _students.filter(function(s) { return normName(s.name).indexOf(q) !== -1; });
+  const list = tail ? nameMatches.filter(function(s) { return phoneTail(s.phone) === tail; }) : [];
+  const box = document.getElementById('searchResult');
+
   if (list.length === 0) {
-    document.getElementById('searchResult').innerHTML = '<div class="empty-state">未找到匹配的学员信息，请检查姓名和手机尾号</div>';
+    let msg;
+    if (nameMatches.length === 0) {
+      msg = '没有找到这个姓名的学员<br><span style="font-size:12px">请核对孩子姓名（以报名登记为准），或联系老师</span>';
+    } else if (!tail) {
+      msg = '请输入家长手机号后4位';
+    } else {
+      // 不泄露任何具体信息，只提示方向，便于家长自查
+      msg = '姓名已匹配，但手机号后四位与登记号码不一致<br>' +
+            '<span style="font-size:12px">请使用<b>报名时登记的家长手机号</b>后四位，或联系老师核对号码</span>';
+    }
+    box.innerHTML = '<div class="empty-state">' + msg + '</div>';
     return;
   }
-  if (list.length === 1) {
-    showStudent(list[0].id);
-    return;
-  }
+  if (list.length === 1) { showStudent(list[0].id); return; }
+
   let html = '';
   list.forEach(function(s) {
     const cls = _classes.find(function(c) { return c.id === s.class_id; });
@@ -226,11 +333,11 @@ function searchByName(name, phoneTail) {
     const sPaid = parseFloat(s.paid_hours) || 0;
     const sRemain = Math.max(0, Math.round((sPaid - sUsed) * 10) / 10);
     html += '<div class="result-item" onclick="showStudent(' + s.id + ')">' +
-      '<span class="name">' + s.name + '</span>' +
-      '<span class="class-name">' + (cls ? cls.name : '') + ' · 剩余' + sRemain + '课时</span>' +
+      '<span class="name">' + esc(s.name) + '</span>' +
+      '<span class="class-name">' + esc(cls ? cls.name : '') + ' · 剩余' + sRemain + '课时</span>' +
     '</div>';
   });
-  document.getElementById('searchResult').innerHTML = html;
+  box.innerHTML = html;
 }
 
 // ═══════════════════════════════════════
@@ -239,7 +346,8 @@ function searchByName(name, phoneTail) {
 function showStudent(studentId) {
   const student = _students.find(function(s) { return s.id === studentId; });
   if (!student) {
-    document.getElementById('app').innerHTML = '<div class="empty-state">未找到学员信息</div><a class="back-btn" onclick="showSearch()">返回查询</a>';
+    document.getElementById('app').innerHTML = '<div class="empty-state">未找到学员信息</div>' +
+      '<div style="text-align:center"><a class="back-btn" onclick="showSearch()">返回查询</a></div>';
     return;
   }
   const cls = _classes.find(function(c) { return c.id === student.class_id; });
@@ -255,15 +363,19 @@ function showStudent(studentId) {
   const currentYear = now.getFullYear();
   const currentMonth = now.getMonth() + 1;
 
-  // 本年度请假课时合计
   const leaves = _leaves.filter(function(l) { return l.student_id === studentId && l.year === currentYear; });
   const leaveHours = leaves.reduce(function(sum, l) { return sum + (parseFloat(l.hours) || 0); }, 0);
 
-  // 生成3月到当前月份的列表，没有出勤记录的月份显示0
+  // 月度明细按 年+月 汇总（同一月若有多条记录不能只取第一条）
+  const monthMap = {};
+  att.forEach(function(a) {
+    if (a.year === currentYear) {
+      monthMap[a.month] = (monthMap[a.month] || 0) + (parseFloat(a.hours) || 0);
+    }
+  });
   const monthRows = [];
   for (let m = 3; m <= currentMonth; m++) {
-    const record = att.find(function(a) { return a.year === currentYear && a.month === m; });
-    const hours = record ? (parseFloat(record.hours) || 0) : 0;
+    const hours = monthMap[m] || 0;
     monthRows.push('<tr><td>' + currentYear + '年' + m + '月</td><td>' + hours + ' 课时</td></tr>');
   }
   const monthRowsHtml = monthRows.join('');
@@ -273,33 +385,26 @@ function showStudent(studentId) {
   const classCumulative = classProgress.cumulative;
   const progressPct = classProgress.pct;
 
-  // 辅助：计算班级进度（3月到当前月累计 / 阶段总课时）
-  function calcClassProgress(cls) {
-    if (!cls) return { total: 0, cumulative: 0, pct: 0 };
-    const total = parseFloat(cls.total_hours) || 0;
+  function calcClassProgress(c) {
+    if (!c) return { total: 0, cumulative: 0, pct: 0 };
+    const total = parseFloat(c.total_hours) || 0;
     let cumulative = 0;
-    for (let m = 3; m <= currentMonth; m++) {
-      cumulative += (cls['m' + m] || 0);
-    }
+    for (let m = 3; m <= currentMonth; m++) cumulative += (c['m' + m] || 0);
     const pct = total > 0 ? Math.min(100, Math.round((cumulative / total) * 100)) : 0;
-    return { total, cumulative, pct };
+    return { total: total, cumulative: cumulative, pct: pct };
   }
 
   const isWarning = remainHours <= 10 && remainHours > 0;
   const isEmpty = remainHours <= 0;
   const gradLabel = (student.status === '毕业' && remainHours <= 0) ? '已结课待续费' : '';
 
-  let html = '<div class="header">' +
-    '<div class="logo">DK·邻里少儿英语</div>' +
-    '<div class="sub">在读学员课时查询</div>' +
-  '</div>';
-
+  let html = pageHeader();
   html += '<div class="card">' +
     '<div class="student-header">' +
-      '<div class="avatar">' + (student.name ? student.name.charAt(0) : '学') + '</div>' +
+      '<div class="avatar">' + (student.name ? esc(student.name.charAt(0)) : '学') + '</div>' +
       '<div class="student-info">' +
-        '<h2>' + student.name + (gradLabel ? '<span class="grad-label">' + gradLabel + '</span>' : '') + '</h2>' +
-        '<div class="tag">' + clsName + ' · ' + phase + '阶段</div>' +
+        '<h2>' + esc(student.name) + (gradLabel ? '<span class="grad-label">' + gradLabel + '</span>' : '') + '</h2>' +
+        '<div class="tag">' + esc(clsName) + ' · ' + esc(phase) + '阶段</div>' +
       '</div>' +
     '</div>' +
   '</div>';
@@ -311,7 +416,7 @@ function showStudent(studentId) {
       '<div class="alert-sub">当前剩余 ' + remainHours + ' 课时</div>' +
     '</div>';
   } else if (isEmpty) {
-    html += '<div class="alert-box" style="background:#fef2f2;border-color:#fecaca">' +
+    html += '<div class="alert-box">' +
       '<div class="alert-icon">🚫</div>' +
       '<div class="alert-text">课时已用完，请尽快续费</div>' +
       '<div class="alert-sub">当前剩余 0 课时</div>' +
@@ -343,7 +448,7 @@ function showStudent(studentId) {
     const hProg = calcClassProgress(hCls);
     const hStatus = hCls.status === '已毕业' ? '已结课' : '历史班级';
     html += '<div class="card">' +
-      '<div class="card-title">' + hCls.name + ' 班级进度（' + hStatus + '）</div>' +
+      '<div class="card-title">' + esc(hCls.name) + ' 班级进度（' + hStatus + '）</div>' +
       '<div class="progress-section">' +
         '<div class="progress-bar-bg"><div class="progress-bar-fill" style="width:' + hProg.pct + '%"></div></div>' +
         '<div class="progress-text"><span>已上 ' + hProg.cumulative + ' 课时（' + hProg.pct + '%）</span><span>共 ' + hProg.total + ' 课时</span></div>' +
@@ -353,7 +458,7 @@ function showStudent(studentId) {
 
   if (classTotal > 0) {
     html += '<div class="card">' +
-      '<div class="card-title">' + (clsName ? clsName.split('(')[0] + ' ' : '') + '班级进度</div>' +
+      '<div class="card-title">' + (clsName ? esc(clsName.split('(')[0]) + ' ' : '') + '班级进度</div>' +
       '<div class="progress-section">' +
         '<div class="progress-bar-bg"><div class="progress-bar-fill" style="width:' + progressPct + '%"></div></div>' +
         '<div class="progress-text"><span>已上 ' + classCumulative + ' 课时（' + progressPct + '%）</span><span>共 ' + classTotal + ' 课时</span></div>' +
