@@ -643,13 +643,13 @@ function getClassCumulativeHours(c) {
   return sum;
 }
 
-// 提取班级的阶段排序序号：K1→0, K2→1, S1→2, S2→3, S3→4, S4→5, S5→6, S6→7, 暑假班→8
+// 提取班级的阶段排序序号：K1→0, K2→1, S1→2, S2→3, S3→4, S4→5, S5→6, S6→7, 短期班(暑假/寒假)→8
 function getClassStageRank(c) {
   const name = (c.name || '').toUpperCase();
   const phase = (c.phase || '');
-  // 暑假班：phase 明确为暑假，或名称中包含“暑假/暑期/SH”字样
-  const isSummer = phase === '暑假' || /暑假|暑期|SH/.test(name);
-  if (isSummer) return 8;
+  // 短期班：phase 为暑假/寒假，或名称包含“暑假/暑期/寒假/SH”字样
+  const isShortTerm = phase === '暑假' || phase === '寒假' || /暑假|暑期|寒假|SH/.test(name);
+  if (isShortTerm) return 8;
   if (phase === 'K1') return 0;
   if (phase === 'K2') return 1;
   // S 阶段：根据班级名称数字判断 S1-S6
@@ -665,7 +665,7 @@ function getClassStageRank(c) {
   return 99;
 }
 
-// 判断是否为暑假班（短期班）
+// 判断是否为短期班（暑假/寒假/SH）
 function isSummerClass(c) {
   return getClassStageRank(c) === 8;
 }
@@ -1031,7 +1031,7 @@ function applyClassGroupCollapse() {
 }
 
 function renderClasses() {
-  // 识别短期班（暑假班等）：phase=暑假，或名称含 暑假/暑期/SH
+  // 识别短期班（暑假/寒假/SH）：phase=暑假/寒假，或名称含 暑假/暑期/寒假/SH
   const shortTermPhaseIds = new Set(_classes.filter(isSummerClass).map(c => c.id));
   // 修复: 只统计在读学员，排除已毕业
   const countMap = {};
@@ -1046,7 +1046,11 @@ function renderClasses() {
     const cls = _classes.find(c => c.id === s.class_id);
     return cls && cls.status !== '已毕业';
   });
-  const gradStu = _students.filter(s => s.status === '毕业' && getStudentRefund(s) <= 0);
+  const gradStu = _students.filter(s => {
+    if (s.status !== '毕业' || getStudentRefund(s) > 0) return false;
+    // 寒暑假班等短期班毕业学员不计入「毕业」统计
+    return !shortTermPhaseIds.has(s.class_id);
+  });
   const refundStu = _students.filter(s => getStudentRefund(s) > 0);
   const gradClassList = _classes.filter(c => c.status === '已毕业');
   // 已开课 = 常规在读 + 班级累计排课 > 0（排除短期班）
@@ -1076,7 +1080,7 @@ function renderClasses() {
     '<div class="summary-item sc-active"><div class="num">' + activeStu.length + '</div><div class="lbl">在读学员</div></div>' +
     '<div class="summary-item sc-opened"><div class="num">' + openedCount + '</div><div class="lbl">已开课</div><div class="sub">累计排课 &gt; 0</div></div>' +
     '<div class="summary-item sc-notopened"><div class="num">' + notOpenedCount + renderSummaryTipGrouped('未开课学员', notOpenedGroups) + '</div><div class="lbl">未开课</div><div class="sub">累计排课 = 0</div></div>' +
-    '<div class="summary-item sc-grad"><div class="num">' + gradStu.length + renderSummaryTip('毕业学员', gradStu.map(s => s.name || '—')) + '</div><div class="lbl">毕业</div></div>' +
+    '<div class="summary-item sc-grad"><div class="num">' + gradStu.length + renderSummaryTip('毕业学员（不含短期班）', gradStu.map(s => s.name || '—')) + '</div><div class="lbl">毕业</div></div>' +
     '<div class="summary-item sc-refund"><div class="num">' + refundStu.length + renderSummaryTip('退费学员', refundStu.map(s => s.name || '—')) + '</div><div class="lbl">退费</div></div>' +
     '<div class="summary-item sc-grad"><div class="num">' + gradClassCount + renderSummaryTip('已毕业班级', gradClassList.map(c => c.name || '—')) + '</div><div class="lbl">已毕业班级</div></div>';
 
