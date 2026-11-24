@@ -301,9 +301,14 @@ tr.drag-over-bottom td{box-shadow:inset 0 -3px 0 0 #3b82f6}
 <!-- Tab 4: 班级排课 -->
 <div class="section" id="sec-stats">
   <div class="card">
-    <h2>班级排课进度 <button class="btn btn-success btn-sm" onclick="saveClassProgress()">保存修改</button>
+    <h2>班级排课进度 <button class="btn btn-success btn-sm" id="progressSaveBtn" onclick="saveClassProgress()">保存修改</button>
       <button class="btn btn-gray btn-sm" onclick="renderClassProgress()">重置</button>
-      <label class="status-toggle" style="margin-left:12px;font-size:13px">
+      <label style="margin-left:10px;font-size:13px;color:#475569;font-weight:600">年份：
+        <select id="progressYearSelect" onchange="onProgressYearChange()" style="padding:5px 8px;border:1px solid #cbd5e1;border-radius:6px;font-size:12px"></select>
+      </label>
+      <button class="btn btn-gray btn-sm" id="progressRolloverBtn" onclick="rolloverProgressYear()" title="归档当前年数据并开启新年度">⏭ 结转下一年</button>
+      <button class="btn btn-gray btn-sm" id="progressMonthsBtn" onclick="toggleProgressMonths()">展开历史月份</button>
+      <label class="status-toggle" style="margin-left:8px;font-size:13px">
         <input type="checkbox" id="showGraduatedProgress" onchange="renderClassProgress()"> 显示毕业班级
       </label>
       <button class="btn btn-gray btn-sm" onclick="exportTab('stats')" style="margin-left:auto">📥 导出</button></h2>
@@ -611,6 +616,8 @@ async function loadAll() {
   });
   
   syncStatus('已同步 ' + _students.length + ' 名学员');
+  // 云端数据到位后校准数据年度（用户未手动切年时跟随云端 data_year）
+  if (!_progressYearManual) { _progressYear = null; initProgressYear(); }
   initApp();
 }
 
@@ -2127,6 +2134,100 @@ async function saveBatchAttendance() {
 // ═══════════════════════════════════════
 // Tab 4: 班级排课
 // ═══════════════════════════════════════
+// ═══ 排课进度：年度与月度折叠 ═══
+// 数据年度：当前 m3-m12 字段归属的年份（从云端 classes.data_year 读取，缺省 2026）
+let _dataYear = 2026;
+// 当前查看年度（可切到历史年度，历史数据只读，存于 classes.year_stats）
+let _progressYear = null;
+let _progressYearManual = false; // 用户是否手动切换过年份（防止云端刷新跳回）
+// 历史月份列是否展开（默认折叠，只显示当月）
+let _monthsExpanded = false;
+try { _monthsExpanded = sessionStorage.getItem('progressMonthsExpanded') === '1'; } catch (e) {}
+
+// 由 _classes 推断数据年度；取所有班级 data_year 的众数，缺省 2026
+function initProgressYear() {
+  const years = (_classes || []).map(c => Number(c.data_year)).filter(y => y >= 2000);
+  if (years.length) {
+    const cnt = {};
+    years.forEach(y => cnt[y] = (cnt[y] || 0) + 1);
+    _dataYear = Number(Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a])[0]) || 2026;
+  }
+  if (_progressYear === null) _progressYear = _dataYear;
+  // 更新年份选择器
+  const sel = document.getElementById('progressYearSelect');
+  if (sel) {
+    const hist = collectHistoryYears();
+    const opts = [String(_dataYear) + ' 年（当前）'].concat(hist.map(y => y + ' 年（归档）'));
+    const vals = [String(_dataYear)].concat(hist.map(y => String(y)));
+    sel.innerHTML = opts.map((t, i) => '<option value="' + vals[i] + '"' + (vals[i] === String(_progressYear) ? ' selected' : '') + '>' + t + '</option>').join('');
+  }
+}
+
+// 收集所有班级 year_stats 中出现过的历史年份（升序）
+function collectHistoryYears() {
+  const set = new Set();
+  (_classes || []).forEach(c => {
+    if (c.year_stats && typeof c.year_stats === 'object') Object.keys(c.year_stats).forEach(y => set.add(Number(y)));
+  });
+  return [...set].filter(y => y && y !== _dataYear).sort((a, b) => b - a);
+}
+
+// 判断当前查看的是否为可编辑的当前年度
+function isCurrentProgressYear() { return Number(_progressYear) === Number(_dataYear); }
+
+// 读取某班在「当前查看年度」下某月的值
+function getMonthValue(c, m) {
+  if (isCurrentProgressYear()) return Number(c['m' + m]) || 0;
+  const ys = c.year_stats && typeof c.year_stats === 'object' ? c.year_stats[String(_progressYear)] : null;
+  return ys ? (Number(ys['m' + m]) || 0) : 0;
+}
+
+// 切换查看年度
+function onProgressYearChange() {
+  const sel = document.getElementById('progressYearSelect');
+  _progressYear = sel ? parseInt(sel.value) : _dataYear;
+  _progressYearManual = true;
+  renderClassProgress();
+}
+
+// 结转年度：把当前 m3-m12 归档到 year_stats[旧年]，清空 m3-m12，data_year 设为新年
+async function rolloverProgressYear() {
+  const nextYear = _dataYear + 1;
+  const oldYear = _dataYear;
+  if (!confirm('确认结转到 ' + nextYear + ' 年？\n\n将把 ' + oldYear + ' 年的月度排课数据归档保存（可在年份下拉切换查看），并清空当前表格以便录入 ' + nextYear + ' 年数据。\n\n此操作会修改数据库，请确认 ' + oldYear + ' 年数据已录入完毕。')) return;
+  showToast('正在结转...', true);
+  try {
+    // 逐班并行：归档旧数据 + 清空当前 + 更新 data_year
+    const results = await Promise.all((_classes || []).map(async c => {
+      const stats = (c.year_stats && typeof c.year_stats === 'object') ? { ...c.year_stats } : {};
+      const snapshot = {};
+      for (let m = 3; m <= 12; m++) snapshot['m' + m] = Number(c['m' + m]) || 0;
+      stats[String(oldYear)] = snapshot;
+      const upd = { year_stats: stats, data_year: nextYear };
+      for (let m = 3; m <= 12; m++) upd['m' + m] = 0;
+      const { error } = await sb.from('classes').update(upd).eq('id', c.id);
+      return { error, name: c.name };
+    }));
+    const failed = results.filter(r => r.error);
+    if (failed.length) { showToast('结转失败：' + failed[0].error.message, false); return; }
+    await loadAll();
+    _dataYear = nextYear;
+    _progressYear = nextYear;
+    initProgressYear();
+    renderClassProgress();
+    showToast('已结转到 ' + nextYear + ' 年，' + oldYear + ' 年数据已归档 ✓');
+  } catch (e) {
+    showToast('结转失败：' + e.message, false);
+  }
+}
+
+// 切换历史月份列展开/折叠
+function toggleProgressMonths() {
+  _monthsExpanded = !_monthsExpanded;
+  try { sessionStorage.setItem('progressMonthsExpanded', _monthsExpanded ? '1' : '0'); } catch (e) {}
+  renderClassProgress();
+}
+
 // 班级排课进度分组折叠状态（默认全部展开）
 let _statsGroupCollapsed = {};
 try {
@@ -2162,20 +2263,32 @@ function applyStatsGroupCollapse() {
 }
 
 function renderClassProgress() {
-  // 动态月份范围：3月开始，到当前月份（当前7月则显示 3-7月）
+  if (_progressYear === null) initProgressYear();
+  const editable = isCurrentProgressYear();
+  // 动态月份范围：3月开始，到当前月份（历史年度固定到12月）
   const startMonth = 3;
-  const currentMonth = new Date().getMonth() + 1; // 1-12
-  const endMonth = Math.max(startMonth, currentMonth);
+  const systemMonth = new Date().getMonth() + 1;
+  const endMonth = editable ? Math.max(startMonth, systemMonth) : 12;
   const months = [];
-  const mkeys = [];
-  for (let m = startMonth; m <= endMonth; m++) {
-    months.push(m);
-    mkeys.push('m' + m);
-  }
+  for (let m = startMonth; m <= endMonth; m++) months.push(m);
+  // 折叠：只显示当前月（历史年度显示12月，即全年最后一列）；展开显示全部
+  const focusMonth = editable ? Math.max(startMonth, systemMonth) : 12;
+  const visibleMonths = _monthsExpanded ? months : months.filter(m => m === focusMonth);
 
+  // 顶部按钮状态
+  const mb = document.getElementById('progressMonthsBtn');
+  if (mb) mb.textContent = _monthsExpanded ? '折叠历史月份' : '展开历史月份';
+  const sv = document.getElementById('progressSaveBtn');
+  if (sv) sv.style.display = editable ? '' : 'none';
+  const rb = document.getElementById('progressRolloverBtn');
+  if (rb) rb.style.display = editable ? '' : 'none';
+  const yearSel = document.getElementById('progressYearSelect');
+  if (yearSel && yearSel.value !== String(_progressYear)) yearSel.value = String(_progressYear);
+
+  const yearTag = _progressYear + '年 ';
   const theadCells =
     '<th style="width:40px">序号</th><th style="text-align:left">班级</th>' +
-    months.map(m => '<th>' + m + '月排课</th>').join('') +
+    visibleMonths.map(m => '<th>' + yearTag + m + '月</th>').join('') +
     '<th>累计已上</th><th>阶段总课时</th><th>班级剩余课时</th><th>进度</th><th>状态</th>';
 
   const showGrad = document.getElementById('showGraduatedProgress')?.checked || false;
@@ -2214,11 +2327,12 @@ function renderClassProgress() {
     list.forEach((c, idx) => {
       const totalHours = c.total_hours || 0;
       const before = c.before_hours || 0;
-      const monthlySum = months.reduce((s, m, i) => s + (c[mkeys[i]] || 0), 0);
-      const cumulative = monthlySum;  // "累计已上" = 仅当年排课（不含年前已上）
+      // 累计始终按该查看年度的全年月份统计（不受折叠影响）
+      const monthlySum = months.reduce((s, m) => s + getMonthValue(c, m), 0);
+      const cumulative = monthlySum;  // "累计已上" = 该年度排课（不含年前已上）
       const isGraduated = c.status === '已毕业';
 
-      // 进度 = 累计已上 / 阶段总课时（本年度完成进度）
+      // 进度 = 累计已上 / 阶段总课时（该年度完成进度）
       const pct = totalHours > 0 ? Math.round(cumulative / totalHours * 100) : 0;
 
       // 状态分级
@@ -2236,7 +2350,13 @@ function renderClassProgress() {
       html += '<tr draggable="true" data-cid="' + c.id + '" data-group="' + g.key + '"' + rowStyle + '>' +
         '<td>' + (idx + 1) + '</td>' +
         '<td style="text-align:left;font-weight:600"><span class="drag-hint">⋮⋮</span> ' + c.name + (isGraduated ? ' <span style="display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;background:#f3e8ff;color:#9333ea;font-weight:600">已毕业</span>' : '') + '</td>' +
-        months.map((m, i) => '<td><input type="number" value="' + (c[mkeys[i]]||0) + '" data-cid="' + c.id + '" data-field="' + mkeys[i] + '" style="width:60px;text-align:center"></td>').join('') +
+        visibleMonths.map(m => {
+          const val = getMonthValue(c, m);
+          if (editable) {
+            return '<td><input type="number" value="' + val + '" data-cid="' + c.id + '" data-field="m' + m + '" data-month="' + m + '" style="width:60px;text-align:center"></td>';
+          }
+          return '<td><span style="display:inline-block;min-width:36px;text-align:center;color:#475569">' + val + '</span></td>';
+        }).join('') +
         '<td><b>' + cumulative + '</b></td>' +
         '<td><b>' + totalHours + '</b></td>' +
         '<td><b style="color:' + (totalHours - cumulative > 0 ? '#15803d' : '#dc2626') + '">' + (totalHours - cumulative) + '</b></td>' +
@@ -2447,6 +2567,7 @@ async function saveClassListSort() {
 }
 
 async function saveClassProgress() {
+  if (!isCurrentProgressYear()) { showToast('历史年度数据为只读，无法保存', false); return; }
   const inputs = document.querySelectorAll('.statsTbody input');
 
   // 按班级聚合变更字段，避免 64 次串行请求
@@ -2653,17 +2774,15 @@ function exportStudents() {
 
 function exportStats() {
   // 与「班级排课进度」页面一致：按阶段分组 + 相同列（含已毕业状态）
+  if (_progressYear === null) initProgressYear();
+  const expEditable = isCurrentProgressYear();
   const showGrad = document.getElementById('showGraduatedProgress')?.checked || false;
   const startMonth = 3;
-  const currentMonth = new Date().getMonth() + 1;
-  const endMonth = Math.max(startMonth, currentMonth);
+  const endMonth = expEditable ? Math.max(startMonth, new Date().getMonth() + 1) : 12;
   const months = [];
-  const mkeys = [];
-  for (let m = startMonth; m <= endMonth; m++) {
-    months.push(m);
-    mkeys.push('m' + m);
-  }
-  const headers = ['序号', '班级'].concat(months.map(m => m + '月排课')).concat(['累计已上', '阶段总课时', '班级剩余课时', '进度', '状态']);
+  for (let m = startMonth; m <= endMonth; m++) months.push(m);
+  const yearTag = _progressYear + '年';
+  const headers = ['序号', '班级'].concat(months.map(m => yearTag + m + '月')).concat(['累计已上', '阶段总课时', '班级剩余课时', '进度', '状态']);
 
   const sortedClasses = classesForDisplay();
   const visibleClasses = sortedClasses.filter(c => !(c.status === '已毕业' && !showGrad));
@@ -2689,7 +2808,7 @@ function exportStats() {
     list.forEach((c, idx) => {
       const totalHours = c.total_hours || 0;
       const before = c.before_hours || 0;
-      const monthlySum = months.reduce((s, m, i) => s + (c[mkeys[i]] || 0), 0);
+      const monthlySum = months.reduce((s, m) => s + getMonthValue(c, m), 0);
       const cumulative = monthlySum;
       const isGrad = c.status === '已毕业';
       const pct = totalHours > 0 ? Math.round(cumulative / totalHours * 100) : 0;
@@ -2706,7 +2825,7 @@ function exportStats() {
       rows.push([
         (idx + 1) + '',
         nameCell,
-        ...mkeys.map(k => (c[k] || 0) + ''),
+        ...months.map(m => getMonthValue(c, m) + ''),
         cumulative + '',
         totalHours + '',
         (totalHours - cumulative) + '',
@@ -2715,7 +2834,7 @@ function exportStats() {
       ]);
     });
   });
-  exportCSV(headers, rows, '班级排课进度_教务系统.csv');
+  exportCSV(headers, rows, '班级排课进度_' + _progressYear + '年.csv');
 }
 
 // ═══════════════════════════════════════
