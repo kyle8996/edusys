@@ -2287,7 +2287,7 @@ function renderClassProgress() {
 
   const yearTag = _progressYear + '年 ';
   const theadCells =
-    '<th style="width:40px">序号</th><th style="text-align:left">班级</th>' +
+    '<th style="width:44px">序号</th><th style="width:96px;text-align:center">班级</th>' +
     visibleMonths.map(m => '<th>' + yearTag + m + '月</th>').join('') +
     '<th>累计已上</th><th>阶段总课时</th><th>班级剩余课时</th><th>进度</th><th>状态</th>';
 
@@ -2349,7 +2349,7 @@ function renderClassProgress() {
       const rowStyle = isGraduated ? ' style="opacity:0.5"' : '';
       html += '<tr draggable="true" data-cid="' + c.id + '" data-group="' + g.key + '"' + rowStyle + '>' +
         '<td>' + (idx + 1) + '</td>' +
-        '<td style="text-align:left;font-weight:600"><span class="drag-hint">⋮⋮</span> ' + c.name + (isGraduated ? ' <span style="display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;background:#f3e8ff;color:#9333ea;font-weight:600">已毕业</span>' : '') + '</td>' +
+        '<td style="text-align:center;font-weight:600;position:relative"><span class="drag-hint" style="position:absolute;left:4px">⋮⋮</span>' + c.name + (isGraduated ? ' <span style="display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;background:#f3e8ff;color:#9333ea;font-weight:600">已毕业</span>' : '') + '</td>' +
         visibleMonths.map(m => {
           const val = getMonthValue(c, m);
           if (editable) {
