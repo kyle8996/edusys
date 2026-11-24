@@ -116,6 +116,17 @@ tr.drag-over-bottom td{box-shadow:inset 0 -3px 0 0 #3b82f6}
 .drag-hint{color:#cbd5e1;font-size:10px;user-select:none}tr:hover .drag-hint{color:#94a3b8}
 .status-toggle{display:inline-flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;user-select:none}
 .status-toggle input{margin:0}
+/* 班级选择自定义下拉：圆点与序号整体居中，阶段配色与班级管理一致 */
+.class-dd{position:relative;display:inline-block;margin-left:8px}
+.class-dd-trigger{min-width:118px;padding:6px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;background:#fff;cursor:pointer;text-align:center;white-space:nowrap}
+.class-dd-trigger:hover{background:#f8fafc}
+.class-dd-trigger::after{content:'▾';margin-left:6px;color:#94a3b8}
+.class-dd-menu{display:none;position:absolute;top:calc(100% + 4px);left:0;min-width:100%;background:#fff;border:1px solid #cbd5e1;border-radius:10px;box-shadow:0 8px 24px rgba(15,23,42,.15);z-index:1000;padding:5px}
+.class-dd-menu.open{display:block}
+.class-dd-item{display:flex;align-items:center;justify-content:center;gap:7px;padding:7px 14px;border-radius:6px;font-size:13px;white-space:nowrap;cursor:pointer;color:#334155}
+.class-dd-item:hover{background:#f1f5f9}
+.class-dd-item.active{background:#eff6ff;color:#1d4ed8;font-weight:700}
+.class-dot{display:inline-block;width:9px;height:9px;border-radius:50%;flex:none}
 .sync-bar{background:linear-gradient(135deg,#10b981,#059669);color:#fff;padding:8px 28px;display:flex;align-items:center;gap:10px;font-size:12px;flex-wrap:wrap}
 .sync-bar b{font-size:13px}
 .login-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:#1e3a5f;z-index:999;display:flex;justify-content:center;align-items:center;flex-direction:column}
@@ -253,9 +264,13 @@ tr.drag-over-bottom td{box-shadow:inset 0 -3px 0 0 #3b82f6}
         <option value="s">S 阶段</option>
         <option value="summer">短期班</option>
       </select>
-      <select id="stuClassFilter" onchange="renderStudents()" style="margin-left:8px;padding:6px 12px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;min-width:110px">
+      <select id="stuClassFilter" onchange="renderStudents()" style="display:none">
         <option value="all">全部班级</option>
       </select>
+      <div class="class-dd" id="classDd">
+        <div class="class-dd-trigger" id="classDdTrigger" onclick="toggleClassDd(event)">全部班级</div>
+        <div class="class-dd-menu" id="classDdMenu"></div>
+      </div>
       <label class="status-toggle" style="margin-left:12px;font-size:13px;color:#7c3aed;font-weight:600">
         <input type="checkbox" id="showGraduated" onchange="renderStudents()"> 🎓 仅看毕业学员
       </label>
@@ -1393,24 +1408,14 @@ function fillStuClassFilter() {
     list = list.filter(c => classifyClass(c) === phase);
   }
 
-  // 按阶段区分班级序号：🔵 K1 / 🟠 K2 / 🟣 S
-  // macOS/Chrome 原生下拉会忽略 option 的 CSS 背景色与文字色，故用彩色圆点字符保证可见
-  const phaseColor = {
-    k1:  { mark: '🔵', bg: '#e8f2ff', fg: '#1d4ed8' },
-    k2:  { mark: '🟠', bg: '#fff3e0', fg: '#c2410c' },
-    s:   { mark: '🟣', bg: '#f3e8ff', fg: '#7c3aed' }
-  };
+  // 阶段圆点颜色：与班级管理一致 K1蓝 / K2绿 / S紫
+  const dotColor = { k1: '#2563eb', k2: '#059669', s: '#7c3aed' };
 
   let foundCurrent = false;
   list.forEach(c => {
     const opt = document.createElement('option');
     opt.value = c.id;
-    const pc = phaseColor[classifyClass(c)];
-    opt.textContent = (pc ? pc.mark + ' ' : '') + c.name;
-    if (pc) {
-      opt.style.background = pc.bg;
-      opt.style.color = pc.fg;
-    }
+    opt.textContent = c.name;
     sel.appendChild(opt);
     if (String(c.id) === currentClassVal) foundCurrent = true;
   });
@@ -1421,7 +1426,68 @@ function fillStuClassFilter() {
   } else if (currentClassVal) {
     sel.value = currentClassVal;
   }
+
+  // 构建自定义下拉菜单（圆点+序号整体居中）
+  const menu = document.getElementById('classDdMenu');
+  if (!menu) return;
+  let html = classDdItemHtml('all', '全部班级', '', sel.value === 'all');
+  list.forEach(c => {
+    const color = dotColor[classifyClass(c)] || '';
+    html += classDdItemHtml(c.id, c.name, color, String(c.id) === sel.value);
+  });
+  menu.innerHTML = html;
+  updateClassDdTrigger();
 }
+
+function classDdItemHtml(val, name, color, active) {
+  const dot = color ? '<span class="class-dot" style="background:' + color + '"></span>' : '';
+  return '<div class="class-dd-item' + (active ? ' active' : '') + '" data-val="' + val + '" onclick="pickClassDd(this)">' +
+    dot + '<span>' + name + '</span></div>';
+}
+
+function updateClassDdTrigger() {
+  const sel = document.getElementById('stuClassFilter');
+  const trigger = document.getElementById('classDdTrigger');
+  if (!sel || !trigger) return;
+  const opt = sel.options[sel.selectedIndex];
+  const name = opt ? opt.textContent : '全部班级';
+  const cid = sel.value;
+  let color = '';
+  if (cid !== 'all') {
+    const c = _classes.find(x => String(x.id) === String(cid));
+    if (c) color = { k1: '#2563eb', k2: '#059669', s: '#7c3aed' }[classifyClass(c)] || '';
+  }
+  const dot = color ? '<span class="class-dot" style="background:' + color + '" ></span> ' : '';
+  trigger.innerHTML = dot + name;
+}
+
+function toggleClassDd(event) {
+  event.stopPropagation();
+  const menu = document.getElementById('classDdMenu');
+  if (!menu) return;
+  const willOpen = !menu.classList.contains('open');
+  document.querySelectorAll('.class-dd-menu.open').forEach(m => m.classList.remove('open'));
+  if (willOpen) menu.classList.add('open');
+}
+
+function pickClassDd(el) {
+  const val = el.getAttribute('data-val');
+  const sel = document.getElementById('stuClassFilter');
+  sel.value = val;
+  document.querySelectorAll('#classDdMenu .class-dd-item').forEach(x => x.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('classDdMenu').classList.remove('open');
+  updateClassDdTrigger();
+  renderStudents();
+}
+
+document.addEventListener('click', function(e) {
+  const dd = document.getElementById('classDd');
+  if (dd && !dd.contains(e.target)) {
+    const menu = document.getElementById('classDdMenu');
+    if (menu) menu.classList.remove('open');
+  }
+});
 
 function onStuPhaseChange() {
   fillStuClassFilter();
