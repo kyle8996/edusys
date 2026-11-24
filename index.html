@@ -1387,22 +1387,35 @@ function fillStuClassFilter() {
   sel.innerHTML = '<option value="all">全部班级</option>';
 
   let list = getSortedClasses();
+  // 已毕业班级不在下拉中显示（毕业学员可通过「仅看毕业学员」查看）
+  list = list.filter(c => c.status !== '已毕业');
   if (phase !== 'all') {
     list = list.filter(c => classifyClass(c) === phase);
   }
 
+  // 按阶段区分班级序号颜色：K1 蓝 / K2 橙 / S 紫
+  const phaseColor = {
+    k1:  { bg: '#e8f2ff', fg: '#1d4ed8' },
+    k2:  { bg: '#fff3e0', fg: '#c2410c' },
+    s:   { bg: '#f3e8ff', fg: '#7c3aed' }
+  };
+
   let foundCurrent = false;
   list.forEach(c => {
-    const tag = c.status === '已毕业' ? '（已毕业）' : '';
     const opt = document.createElement('option');
     opt.value = c.id;
-    opt.textContent = c.name + tag;
+    opt.textContent = c.name;
+    const pc = phaseColor[classifyClass(c)];
+    if (pc) {
+      opt.style.background = pc.bg;
+      opt.style.color = pc.fg;
+    }
     sel.appendChild(opt);
     if (String(c.id) === currentClassVal) foundCurrent = true;
   });
 
-  // 若当前已选班级不在新阶段列表中，回退到全部班级
-  if (phase !== 'all' && !foundCurrent && currentClassVal !== 'all') {
+  // 若当前已选班级已不在列表（切阶段 / 该班已毕业），回退到全部班级
+  if (!foundCurrent && currentClassVal !== 'all') {
     sel.value = 'all';
   } else if (currentClassVal) {
     sel.value = currentClassVal;
