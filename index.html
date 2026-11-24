@@ -655,9 +655,14 @@ function getClassName(cid) {
   return c ? c.name : '未知班级';
 }
 
-// 获取当年累计排课（从3月到当前月份，自动随时间扩展）
+// 起始月份按年份决定：校区2026年3月开业，2026年从3月起；2027年及以后全年从1月起
+function getStartMonthForYear(year) {
+  return Number(year) <= 2026 ? 3 : 1;
+}
+
+// 获取当年累计排课（按年份起始月到当前月份，自动随时间扩展）
 function getClassCumulativeHours(c) {
-  const startMonth = 3;
+  const startMonth = getStartMonthForYear(_dataYear);
   const currentMonth = new Date().getMonth() + 1;
   const endMonth = Math.max(startMonth, currentMonth);
   let sum = 0;
@@ -1633,9 +1638,10 @@ async function renderStudents() {
     const freq = cls?.freq || 8;
     const cname = classMap[cid] || '未知班级';
     
-    // 动态月份范围：3月开始，到当前月份
-    const startMonth = 3;
-    const endMonth = new Date().getMonth() + 1; // 1-12
+    // 动态月份范围：2026年从3月起（开业年），2027年起从1月起；当前年到当月，其他年到12月
+    const sysYear = new Date().getFullYear();
+    const startMonth = getStartMonthForYear(year);
+    const endMonth = (year === sysYear) ? new Date().getMonth() + 1 : 12;
     const visibleMonths = [];
     for (let m = startMonth; m <= endMonth; m++) visibleMonths.push(m);
     const monthCount = visibleMonths.length;
@@ -2217,10 +2223,10 @@ async function rolloverProgressYear() {
     const results = await Promise.all((_classes || []).map(async c => {
       const stats = (c.year_stats && typeof c.year_stats === 'object') ? { ...c.year_stats } : {};
       const snapshot = {};
-      for (let m = 3; m <= 12; m++) snapshot['m' + m] = Number(c['m' + m]) || 0;
+      for (let m = 1; m <= 12; m++) snapshot['m' + m] = Number(c['m' + m]) || 0;
       stats[String(oldYear)] = snapshot;
       const upd = { year_stats: stats, data_year: nextYear };
-      for (let m = 3; m <= 12; m++) upd['m' + m] = 0;
+      for (let m = 1; m <= 12; m++) upd['m' + m] = 0;
       const { error } = await sb.from('classes').update(upd).eq('id', c.id);
       return { error, name: c.name };
     }));
@@ -2281,8 +2287,8 @@ function applyStatsGroupCollapse() {
 function renderClassProgress() {
   if (_progressYear === null) initProgressYear();
   const editable = isCurrentProgressYear();
-  // 动态月份范围：3月开始，到当前月份（历史年度固定到12月）
-  const startMonth = 3;
+  // 动态月份范围：按查看年份决定起始月（2026年3月起，2027年起1月起），到当前月份（历史年度固定到12月）
+  const startMonth = getStartMonthForYear(_progressYear);
   const systemMonth = new Date().getMonth() + 1;
   const endMonth = editable ? Math.max(startMonth, systemMonth) : 12;
   const months = [];
@@ -2759,9 +2765,10 @@ function exportStudents() {
     // 具体班级：月度展开视图，与页面一致（每月 上课/请假 两列）
     const cid = parseInt(filterId);
     const cname = classMap[cid] || '未知班级';
-    const currentMonth = new Date().getMonth() + 1;
+    const startMonth = getStartMonthForYear(year);
+    const currentMonth = (year === new Date().getFullYear()) ? new Date().getMonth() + 1 : 12;
     const monthHeaders = [];
-    for (let m = 3; m <= currentMonth; m++) { monthHeaders.push(m + '月上课'); monthHeaders.push(m + '月请假'); }
+    for (let m = startMonth; m <= currentMonth; m++) { monthHeaders.push(m + '月上课'); monthHeaders.push(m + '月请假'); }
     const headers = ['序号', '姓名'].concat(monthHeaders).concat(['出勤课时合计', '请假合计', '缴费课时', '剩余课时']);
     const rows = [];
     let seq = 0;
@@ -2772,7 +2779,7 @@ function exportStudents() {
         const rem = calcRemaining(s.id);
         const row = [seq + '', s.name];
         let yearTotal = 0, leaveYearTotal = 0;
-        for (let m = 3; m <= currentMonth; m++) {
+        for (let m = startMonth; m <= currentMonth; m++) {
           const rec = _attendance.find(a => a.student_id === s.id && a.year === year && a.month === m);
           const hours = rec ? (rec.hours||0) : 0;
           yearTotal += hours;
@@ -2793,7 +2800,7 @@ function exportStats() {
   if (_progressYear === null) initProgressYear();
   const expEditable = isCurrentProgressYear();
   const showGrad = document.getElementById('showGraduatedProgress')?.checked || false;
-  const startMonth = 3;
+  const startMonth = getStartMonthForYear(_progressYear);
   const endMonth = expEditable ? Math.max(startMonth, new Date().getMonth() + 1) : 12;
   const months = [];
   for (let m = startMonth; m <= endMonth; m++) months.push(m);
