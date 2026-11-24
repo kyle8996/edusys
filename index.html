@@ -1393,12 +1393,12 @@ function fillStuClassFilter() {
     list = list.filter(c => classifyClass(c) === phase);
   }
 
-  // 按阶段区分班级序号：🟦 K1 / 🟧 K2 / 🟪 S
-  // macOS/Chrome 原生下拉会忽略 option 的 CSS 背景色与文字色，故用彩色色块字符保证可见
+  // 按阶段区分班级序号：🔵 K1 / 🟠 K2 / 🟣 S
+  // macOS/Chrome 原生下拉会忽略 option 的 CSS 背景色与文字色，故用彩色圆点字符保证可见
   const phaseColor = {
-    k1:  { mark: '🟦', bg: '#e8f2ff', fg: '#1d4ed8' },
-    k2:  { mark: '🟧', bg: '#fff3e0', fg: '#c2410c' },
-    s:   { mark: '🟪', bg: '#f3e8ff', fg: '#7c3aed' }
+    k1:  { mark: '🔵', bg: '#e8f2ff', fg: '#1d4ed8' },
+    k2:  { mark: '🟠', bg: '#fff3e0', fg: '#c2410c' },
+    s:   { mark: '🟣', bg: '#f3e8ff', fg: '#7c3aed' }
   };
 
   let foundCurrent = false;
